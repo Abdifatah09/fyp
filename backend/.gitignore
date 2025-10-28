@@ -1,0 +1,36 @@
+# Node dependencies
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment files (keep example only)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Build and cache folders
+dist/
+build/
+.cache/
+coverage/
+.nyc_output/
+*.tsbuildinfo
+
+# Sequelize or migration artefacts
+src/migrations/*.tmp
+src/seeders/*.tmp
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.sw?
