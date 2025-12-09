@@ -27,11 +27,6 @@ exports.register = async (req, res) => {
       role: role || 'student',
     });
 
-    await Profile.create({
-      userId: user.id,
-      firstName: name,
-    });
-
     const refreshTokenStr = generateRefreshToken();
 
     await RefreshToken.create({
