@@ -106,3 +106,86 @@ exports.me = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
+exports.refresh = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(400).json({ message: 'refreshToken is required' });
+    }
+
+    const stored = await RefreshToken.findOne({ where: { token: refreshToken } });
+
+    if (!stored) {
+      return res.status(401).json({ message: 'Invalid refresh token' });
+    }
+
+    if (stored.revokedAt || new Date(stored.expiresAt) < new Date()) {
+      return res.status(401).json({ message: 'Refresh token expired or revoked' });
+    }
+
+    const user = await User.findByPk(stored.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found for this token' });
+    }
+
+    const accessToken = generateAccessToken(user);
+
+    return res.json({
+      message: 'Token refreshed',
+      accessToken,
+    });
+  } catch (err) {
+    console.error('Refresh error:', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+exports.logout = async (req, res) => {
+  try {
+
+    const userId = req.user.userId; 
+
+    await RefreshToken.update(
+      { revokedAt: new Date() },
+      { where: { userId } }
+    );
+
+    return res.json({ message: 'Logged out successfully' });
+  } catch (err) {
+    console.error('Logout error:', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+exports.deleteUser = async (req, res) => {
+  try {
+    const { userIdToDelete } = req.params;
+    const { role, userId } = req.user;
+
+    if (role !== 'admin') {
+      return res.status(403).json({ message: 'Only admin can delete users' });
+    }
+
+    if (!userIdToDelete) {
+      return res.status(400).json({ message: 'userId is required' });
+    }
+
+    if (userIdToDelete === userId) {
+      return res.status(400).json({ message: 'Admin cannot delete themselves via this route' });
+    }
+
+    const user = await User.findByPk(userIdToDelete);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    await user.destroy(); 
+
+    return res.json({ message: 'User deleted successfully' });
+  } catch (err) {
+    console.error('Delete user error:', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
