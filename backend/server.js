@@ -3,7 +3,10 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
-const sequelize = require('./sequelize');
+const authRoutes = require('./routes/authRoutes');
+
+// IMPORTANT: import from models, not sequelize.js
+const  {sequelize}  = require('./models');
 
 const app = express();
 
@@ -11,13 +14,10 @@ app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-
-
+app.use('/auth', authRoutes);
 
 (async () => {
   try {
-    if (!sequelize) throw new Error('Sequelize instance is undefined');
-
     await sequelize.authenticate();
     console.log('DB connection OK');
 
