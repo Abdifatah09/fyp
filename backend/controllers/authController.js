@@ -1,4 +1,5 @@
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const { User, Profile, RefreshToken } = require('../models');
 const {
   generateAccessToken,
@@ -181,6 +182,78 @@ exports.deleteUser = async (req, res) => {
     return res.json({ message: 'User deleted successfully' });
   } catch (err) {
     console.error('Delete user error:', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
+    const genericMsg = { message: 'If the email exists, a reset token has been created.' };
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) return res.json(genericMsg);
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + 15 * 60 * 1000); 
+
+    await user.update({
+      passwordResetToken: resetToken,
+      passwordResetTokenExpiresAt: expires,
+    });
+
+    return res.json({
+      ...genericMsg,
+      resetToken, 
+      expiresAt: expires,
+    });
+  } catch (err) {
+    console.error('forgotPassword error:', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { email, resetToken, newPassword } = req.body;
+
+    if (!email || !resetToken || !newPassword) {
+      return res.status(400).json({ message: 'email, resetToken and newPassword are required' });
+    }
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) return res.status(400).json({ message: 'Invalid token or expired' });
+
+    if (
+      !user.passwordResetToken ||
+      user.passwordResetToken !== resetToken ||
+      !user.passwordResetTokenExpiresAt ||
+      new Date(user.passwordResetTokenExpiresAt) < new Date()
+    ) {
+      return res.status(400).json({ message: 'Invalid token or expired' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    await user.update({
+      passwordHash, 
+      passwordResetToken: null,
+      passwordResetTokenExpiresAt: null,
+    });
+
+    if (RefreshToken) {
+      await RefreshToken.update(
+        { revokedAt: new Date() },
+        { where: { userId: user.id, revokedAt: null } }
+      );
+    }
+
+    return res.json({ message: 'Password reset successful. Please log in again.' });
+  } catch (err) {
+    console.error('resetPassword error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

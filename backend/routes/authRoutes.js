@@ -9,4 +9,8 @@ router.post('/refresh', authController.refresh);
 router.get('/logout', requireAuth, authController.logout);
 router.delete('/delete/:userIdToDelete', requireAuth, authController.deleteUser);
 
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/reset-password', authController.resetPassword);
+
+
 module.exports = router;
