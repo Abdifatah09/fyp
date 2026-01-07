@@ -37,7 +37,7 @@ export default function Login() {
 
     try {
       await login(email, password);
-      navigate("/dashboard");
+      navigate("/profile");
     } catch (error) {
       setErr(error?.response?.data?.message || "Login failed");
     } finally {

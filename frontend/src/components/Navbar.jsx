@@ -21,6 +21,7 @@ export default function Navbar() {
         {user ? (
           <>
             <Link className="underline" to="/dashboard">Dashboard</Link>
+            <Link className="underline" to="/profile">Profile</Link>
             <button className="underline" onClick={onLogout}>Logout</button>
           </>
         ) : (
