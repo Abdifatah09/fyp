@@ -1,40 +1,16 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { profileService } from "../services/profileService";
-import { authService } from "../services/authService";
-
-const GENDER_OPTIONS = [
-  { value: "", label: "Select..." },
-  { value: "male", label: "Male" },
-  { value: "female", label: "Female" },
-  { value: "other", label: "Other" },
-  { value: "prefer_not_to_say", label: "Prefer not to say" },
-];
-
-function validate(values) {
-  const errors = {};
-  if (!values.firstName?.trim()) errors.firstName = "First name is required";
-  if (!values.lastName?.trim()) errors.lastName = "Last name is required";
-
-  if (values.username && values.username.length < 3) {
-    errors.username = "Username must be at least 3 characters";
-  }
-  if (values.bio && values.bio.length > 250) {
-    errors.bio = "Bio must be 250 characters or less";
-  }
-  if (values.dob && isNaN(Date.parse(values.dob))) {
-    errors.dob = "Date of birth must be a valid date";
-  }
-  return errors;
-}
+import { useEffect, useState } from "react";
+import { api } from "../services/api"; 
+import { profileService } from "../services/profileService"; 
 
 export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [serverError, setServerError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
+  const [error, setError] = useState("");
 
   const [userId, setUserId] = useState(null);
   const [profile, setProfile] = useState(null);
+
+  const [isNewProfile, setIsNewProfile] = useState(false);
 
   const [form, setForm] = useState({
     firstName: "",
@@ -46,52 +22,80 @@ export default function Profile() {
     avatarUri: "",
   });
 
-  const errors = useMemo(() => validate(form), [form]);
-  const hasErrors = Object.keys(errors).length > 0;
-
   useEffect(() => {
     let mounted = true;
 
     async function load() {
+      setLoading(true);
+      setError("");
+
       try {
-        setLoading(true);
-        setServerError("");
 
-        const meData = await authService.me();
-        const meUser = meData?.user ?? meData;
-        const uid = meUser?.id;
+        const meRes = await api.get("/auth/me");
+        const meUserId = meRes?.data?.user?.id ?? meRes?.data?.id;
 
-        if (!uid) throw new Error("No userId returned from /auth/me");
+        if (!meUserId) {
+          throw new Error("Could not find userId from /auth/me response.");
+        }
         if (!mounted) return;
-        setUserId(uid);
+        setUserId(meUserId);
 
-        const profData = await profileService.me();
-        const p = profData?.profile ?? profData;
+        let profData;
+        try {
+          profData = await profileService.me();
+          if (!mounted) return;
+          setIsNewProfile(false);
+        } catch (err) {
+          const status = err?.response?.status;
+          const message = err?.response?.data?.message || "";
+
+          const notFound =
+            status === 404 ||
+            /not found/i.test(message) ||
+            /no profile/i.test(message);
+
+          if (!notFound) throw err;
+
+          profData = await profileService.create({
+            firstName: "",
+            lastName: "",
+            username: null,
+            dob: null,
+            gender: null,
+            bio: null,
+            avatarUri: null,
+          });
+
+          if (!mounted) return;
+          setIsNewProfile(true);
+        }
+
+        const resolvedProfile = profData?.profile ?? profData;
 
         if (!mounted) return;
-
-        setProfile(p);
+        setProfile(resolvedProfile);
 
         setForm({
-          firstName: p?.firstName ?? "",
-          lastName: p?.lastName ?? "",
-          username: p?.username ?? "",
-          dob: p?.dob ? String(p.dob).slice(0, 10) : "",
-          gender: p?.gender ?? "",
-          bio: p?.bio ?? "",
-          avatarUri: p?.avatarUri ?? "",
+          firstName: resolvedProfile?.firstName ?? "",
+          lastName: resolvedProfile?.lastName ?? "",
+          username: resolvedProfile?.username ?? "",
+          dob: resolvedProfile?.dob ? String(resolvedProfile.dob).slice(0, 10) : "",
+          gender: resolvedProfile?.gender ?? "",
+          bio: resolvedProfile?.bio ?? "",
+          avatarUri: resolvedProfile?.avatarUri ?? "",
         });
-      } catch (err) {
+      } catch (e) {
+        console.error(e);
         if (!mounted) return;
 
         const msg =
-          err?.response?.data?.message ||
-          err?.message ||
-          "Failed to load profile";
-
-        setServerError(msg);
+          e?.response?.data?.message ||
+          e?.message ||
+          "Something went wrong loading your profile.";
+        setError(msg);
       } finally {
-        if (mounted) setLoading(false);
+        if (!mounted) return;
+        setLoading(false);
       }
     }
 
@@ -103,31 +107,29 @@ export default function Profile() {
 
   function onChange(e) {
     const { name, value } = e.target;
-    setSuccessMsg("");
-    setServerError("");
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
   async function onSubmit(e) {
     e.preventDefault();
-    setSuccessMsg("");
-    setServerError("");
-
-    const currentErrors = validate(form);
-    if (Object.keys(currentErrors).length) return;
+    setError("");
 
     if (!userId) {
-      setServerError("Missing userId. Please login again.");
+      setError("Missing userId. Please refresh and try again.");
       return;
     }
 
-    try {
-      setSaving(true);
+    if (!form.firstName.trim() || !form.lastName.trim()) {
+      setError("First name and last name are required.");
+      return;
+    }
 
+    setSaving(true);
+    try {
       const payload = {
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
-        username: form.username.trim() || null,
+        username: form.username?.trim() || null,
         dob: form.dob || null,
         gender: form.gender || null,
         bio: form.bio?.trim() || null,
@@ -135,223 +137,155 @@ export default function Profile() {
       };
 
       const updated = await profileService.updateByUserId(userId, payload);
-      const updatedProfile = updated?.profile ?? updated;
+      const resolvedProfile = updated?.profile ?? updated;
 
-      setProfile(updatedProfile);
-      setSuccessMsg("Profile updated successfully ✅");
-    } catch (err) {
-      setServerError(
-        err?.response?.data?.message || "Failed to update profile"
-      );
+      setProfile(resolvedProfile);
+
+      setIsNewProfile(false);
+    } catch (e) {
+      console.error(e);
+      const msg =
+        e?.response?.data?.message ||
+        e?.message ||
+        "Failed to save profile. Please try again.";
+      setError(msg);
     } finally {
       setSaving(false);
     }
   }
 
-  function resetToSaved() {
-    setSuccessMsg("");
-    setServerError("");
-    setForm({
-      firstName: profile?.firstName ?? "",
-      lastName: profile?.lastName ?? "",
-      username: profile?.username ?? "",
-      dob: profile?.dob ? String(profile.dob).slice(0, 10) : "",
-      gender: profile?.gender ?? "",
-      bio: profile?.bio ?? "",
-      avatarUri: profile?.avatarUri ?? "",
-    });
-  }
-
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-gray-700">
-        Loading profile...
+      <div className="p-6">
+        <p className="text-sm text-gray-600">Loading profile…</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-10 px-4">
-      <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-sm border p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold">Edit Profile</h1>
-            <p className="text-gray-600 mt-1">
-              Update your personal information.
-            </p>
-          </div>
+    <div className="p-6 max-w-3xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold">
+          {isNewProfile ? "Create Profile" : "Update Profile"}
+        </h1>
+        <p className="text-sm text-gray-600">
+          {isNewProfile
+            ? "Complete your details to finish creating your profile."
+            : "Update your profile details below."}
+        </p>
+      </div>
 
-          <div className="w-16 h-16 rounded-full bg-gray-100 border overflow-hidden flex items-center justify-center">
-            {form.avatarUri ? (
-              <img
-                src={form.avatarUri}
-                alt="Avatar"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
-              />
-            ) : (
-              <span className="text-gray-500 text-sm">No photo</span>
-            )}
-          </div>
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {error}
         </div>
+      )}
 
-        {(serverError || successMsg) && (
-          <div className="mt-4">
-            {serverError && (
-              <div className="p-3 rounded-md bg-red-50 text-red-700 border border-red-200">
-                {serverError}
-              </div>
-            )}
-            {successMsg && (
-              <div className="p-3 rounded-md bg-green-50 text-green-700 border border-green-200">
-                {successMsg}
-              </div>
-            )}
-          </div>
-        )}
-
-        <form onSubmit={onSubmit} className="mt-6 space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
-            <Field
-              label="First name"
+      <form onSubmit={onSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">First Name</label>
+            <input
               name="firstName"
               value={form.firstName}
               onChange={onChange}
-              error={errors.firstName}
-              required
-            />
-            <Field
-              label="Last name"
-              name="lastName"
-              value={form.lastName}
-              onChange={onChange}
-              error={errors.lastName}
-              required
-            />
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <Field
-              label="Username"
-              name="username"
-              value={form.username}
-              onChange={onChange}
-              error={errors.username}
-              placeholder="e.g. abdifatah09"
-            />
-            <Field
-              label="Date of birth"
-              name="dob"
-              value={form.dob}
-              onChange={onChange}
-              error={errors.dob}
-              type="date"
-            />
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Gender
-              </label>
-              <select
-                name="gender"
-                value={form.gender}
-                onChange={onChange}
-                className="mt-1 w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black/10"
-              >
-                {GENDER_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <Field
-              label="Avatar URL"
-              name="avatarUri"
-              value={form.avatarUri}
-              onChange={onChange}
-              placeholder="https://..."
+              className="w-full border rounded-lg p-2"
+              placeholder="First name"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Bio <span className="text-gray-500">(max 250)</span>
-            </label>
-            <textarea
-              name="bio"
-              value={form.bio}
+            <label className="block text-sm font-medium mb-1">Last Name</label>
+            <input
+              name="lastName"
+              value={form.lastName}
               onChange={onChange}
-              rows={4}
-              className="mt-1 w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black/10"
-              placeholder="Write a short bio..."
+              className="w-full border rounded-lg p-2"
+              placeholder="Last name"
             />
-            <div className="flex justify-between mt-1 text-sm">
-              <span className="text-red-600">{errors.bio || ""}</span>
-              <span className="text-gray-500">{form.bio.length}/250</span>
-            </div>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Username</label>
+          <input
+            name="username"
+            value={form.username}
+            onChange={onChange}
+            className="w-full border rounded-lg p-2"
+            placeholder="username (optional)"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Date of Birth</label>
+            <input
+              type="date"
+              name="dob"
+              value={form.dob}
+              onChange={onChange}
+              className="w-full border rounded-lg p-2"
+            />
           </div>
 
-          <div className="flex items-center gap-3 pt-2">
-            <button
-              type="submit"
-              disabled={saving || hasErrors}
-              className="px-4 py-2 rounded-md bg-black text-white disabled:opacity-50"
+          <div>
+            <label className="block text-sm font-medium mb-1">Gender</label>
+            <select
+              name="gender"
+              value={form.gender}
+              onChange={onChange}
+              className="w-full border rounded-lg p-2"
             >
-              {saving ? "Saving..." : "Save changes"}
-            </button>
+              <option value="">Select…</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+              <option value="prefer_not_to_say">Prefer not to say</option>
+            </select>
+          </div>
+        </div>
 
-            <button
-              type="button"
-              onClick={resetToSaved}
-              className="px-4 py-2 rounded-md border"
-            >
-              Reset
-            </button>
+        <div>
+          <label className="block text-sm font-medium mb-1">Bio</label>
+          <textarea
+            name="bio"
+            value={form.bio}
+            onChange={onChange}
+            className="w-full border rounded-lg p-2 min-h-[110px]"
+            placeholder="Write something about yourself…"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Avatar URL</label>
+          <input
+            name="avatarUri"
+            value={form.avatarUri}
+            onChange={onChange}
+            className="w-full border rounded-lg p-2"
+            placeholder="https://..."
+          />
+        </div>
+
+        <div className="flex items-center justify-between pt-2">
+          <div className="text-xs text-gray-500">
+            {profile?.id ? `Profile ID: ${profile.id}` : ""}
           </div>
 
-          {hasErrors && (
-            <p className="text-sm text-gray-600">
-              Fix the highlighted fields to save.
-            </p>
-          )}
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function Field({
-  label,
-  name,
-  value,
-  onChange,
-  error,
-  type = "text",
-  required = false,
-  placeholder,
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700">
-        {label} {required ? <span className="text-red-600">*</span> : null}
-      </label>
-      <input
-        type={type}
-        name={name}
-        value={value}
-        placeholder={placeholder}
-        onChange={onChange}
-        className={`mt-1 w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black/10 ${
-          error ? "border-red-400" : ""
-        }`}
-      />
-      {error ? <p className="mt-1 text-sm text-red-600">{error}</p> : null}
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-4 py-2 rounded-lg bg-black text-white disabled:opacity-60"
+          >
+            {saving
+              ? "Saving..."
+              : isNewProfile
+              ? "Create"
+              : "Update"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
