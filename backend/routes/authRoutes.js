@@ -11,6 +11,8 @@ router.delete('/delete/:userIdToDelete', requireAuth, authController.deleteUser)
 
 router.post('/forgot-password', authController.forgotPassword);
 router.post('/reset-password', authController.resetPassword);
+router.post("/verify-email", authController.verifyEmailCode);
+
 
 
 module.exports = router;

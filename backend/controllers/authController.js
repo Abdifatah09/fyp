@@ -1,20 +1,28 @@
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { User, Profile, RefreshToken } = require('../models');
+const { sendOtpEmail } = require("../utils/emailService");
 const {
   generateAccessToken,
   generateRefreshToken,
   refreshTokenExpiryDate
 } = require('../utils/tokenUtils');
 
-exports.register = async (req, res) => {
-  console.log("Incoming body:", req.body);
+function generate6DigitCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+function hashCode(code) {
+  return crypto.createHash("sha256").update(code).digest("hex");
+}
 
+
+exports.register = async (req, res) => {
   try {
     const { email, password, name, role } = req.body;
 
-    if (!email || !password || !name)
+    if (!email || !password || !name) {
       return res.status(400).json({ message: "Email, password and name required" });
+    }
 
     const exists = await User.findOne({ where: { email } });
     if (exists) return res.status(409).json({ message: "Email already exists" });
@@ -25,31 +33,30 @@ exports.register = async (req, res) => {
       email,
       passwordHash,
       name,
-      role: role || 'student',
+      role: role || "student",
+      isEmailVerified: false,
     });
 
-    const refreshTokenStr = generateRefreshToken();
+    const code = generate6DigitCode();
+    const expires = new Date(Date.now() + 10 * 60 * 1000);
 
-    await RefreshToken.create({
-      userId: user.id,
-      token: refreshTokenStr,
-      expiresAt: refreshTokenExpiryDate()
+    await user.update({
+      emailVerificationCodeHash: hashCode(code),
+      emailVerificationExpiresAt: expires,
     });
 
-    const accessToken = generateAccessToken(user);
+    await sendOtpEmail(user.email, code, "VERIFY_EMAIL");
 
     return res.status(201).json({
-      message: "Registered successfully",
-      user: { id: user.id, email: user.email, name: user.name, role: user.role },
-      accessToken,
-      refreshToken: refreshTokenStr,
+      message: "Registered successfully. Verification code sent to your email.",
+      email: user.email,
     });
-
   } catch (err) {
     console.error("Register error:", err);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 exports.login = async (req, res) => {
   try {
@@ -60,6 +67,10 @@ exports.login = async (req, res) => {
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) return res.status(401).json({ message: "Invalid credentials" });
+
+    if (!user.isEmailVerified) {
+      return res.status(403).json({ message: "Please verify your email before logging in." });
+    }
 
     const refreshTokenStr = generateRefreshToken();
 
@@ -189,71 +200,108 @@ exports.deleteUser = async (req, res) => {
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email is required" });
 
-    if (!email) return res.status(400).json({ message: 'Email is required' });
-
-    const genericMsg = { message: 'If the email exists, a reset token has been created.' };
+    const genericMsg = { message: "If the email exists, a reset code has been sent." };
 
     const user = await User.findOne({ where: { email } });
     if (!user) return res.json(genericMsg);
 
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const expires = new Date(Date.now() + 15 * 60 * 1000); 
+    const code = generate6DigitCode();
+    const expires = new Date(Date.now() + 10 * 60 * 1000);
 
     await user.update({
-      passwordResetToken: resetToken,
-      passwordResetTokenExpiresAt: expires,
+      passwordResetCodeHash: hashCode(code),
+      passwordResetExpiresAt: expires,
     });
 
-    return res.json({
-      ...genericMsg,
-      resetToken, 
-      expiresAt: expires,
-    });
+    await sendOtpEmail(email, code, "RESET_PASSWORD");
+
+    return res.json(genericMsg);
   } catch (err) {
-    console.error('forgotPassword error:', err);
-    return res.status(500).json({ message: 'Internal server error' });
+    console.error("forgotPassword error:", err);
+    return res.status(500).json({ message: "Internal server error" });
   }
-};
+};  
 
 exports.resetPassword = async (req, res) => {
   try {
-    const { email, resetToken, newPassword } = req.body;
+    const { email, code, newPassword } = req.body;
 
-    if (!email || !resetToken || !newPassword) {
-      return res.status(400).json({ message: 'email, resetToken and newPassword are required' });
+    if (!email || !code || !newPassword) {
+      return res.status(400).json({ message: "email, code and newPassword are required" });
     }
 
     const user = await User.findOne({ where: { email } });
-    if (!user) return res.status(400).json({ message: 'Invalid token or expired' });
+    if (!user) return res.status(400).json({ message: "Invalid code or expired" });
 
     if (
-      !user.passwordResetToken ||
-      user.passwordResetToken !== resetToken ||
-      !user.passwordResetTokenExpiresAt ||
-      new Date(user.passwordResetTokenExpiresAt) < new Date()
+      !user.passwordResetCodeHash ||
+      !user.passwordResetExpiresAt ||
+      new Date(user.passwordResetExpiresAt) < new Date()
     ) {
-      return res.status(400).json({ message: 'Invalid token or expired' });
+      return res.status(400).json({ message: "Invalid code or expired" });
     }
+
+    const ok = user.passwordResetCodeHash === hashCode(code);
+    if (!ok) return res.status(400).json({ message: "Invalid code or expired" });
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
 
     await user.update({
-      passwordHash, 
-      passwordResetToken: null,
-      passwordResetTokenExpiresAt: null,
+      passwordHash,
+      passwordResetCodeHash: null,
+      passwordResetExpiresAt: null,
     });
 
-    if (RefreshToken) {
-      await RefreshToken.update(
-        { revokedAt: new Date() },
-        { where: { userId: user.id, revokedAt: null } }
-      );
-    }
+    await RefreshToken.update(
+      { revokedAt: new Date() },
+      { where: { userId: user.id, revokedAt: null } }
+    );
 
-    return res.json({ message: 'Password reset successful. Please log in again.' });
+    return res.json({ message: "Password reset successful. Please log in again." });
   } catch (err) {
-    console.error('resetPassword error:', err);
-    return res.status(500).json({ message: 'Internal server error' });
+    console.error("resetPassword error:", err);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
+
+exports.verifyEmailCode = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({ message: "email and code are required" });
+    }
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) return res.status(400).json({ message: "Invalid code" });
+
+    if (user.isEmailVerified) {
+      return res.json({ message: "Email already verified." });
+    }
+
+    if (
+      !user.emailVerificationCodeHash ||
+      !user.emailVerificationExpiresAt ||
+      new Date(user.emailVerificationExpiresAt) < new Date()
+    ) {
+      return res.status(400).json({ message: "Code expired. Please request a new code." });
+    }
+
+    const ok = user.emailVerificationCodeHash === hashCode(code);
+    if (!ok) return res.status(400).json({ message: "Invalid code" });
+
+    await user.update({
+      isEmailVerified: true,
+      emailVerificationCodeHash: null,
+      emailVerificationExpiresAt: null,
+    });
+
+    return res.json({ message: "Email verified successfully. You can now login." });
+  } catch (err) {
+    console.error("verifyEmailCode error:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
