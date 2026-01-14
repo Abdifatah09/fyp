@@ -7,6 +7,7 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import ForgotPassword from "../pages/ForgotPassword";
 import ResetPassword from "../pages/ResetPassword";
 import Profile from "../pages/Profile";
+import VerifyEmail from "../pages/VerifyEmail";
 
 
 export default function AppRoutes() {
@@ -24,7 +25,9 @@ export default function AppRoutes() {
             <Profile />
           </ProtectedRoute>
         }
-      />  
+      /> 
+      <Route path="/verify-email" element={<VerifyEmail />} />
+       
       <Route
         path="/dashboard"
         element={
