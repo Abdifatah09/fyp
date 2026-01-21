@@ -5,6 +5,10 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const authRoutes = require('./routes/authRoutes');
 const profileRoutes = require('./routes/profileRoutes');
+const subjectRoutes = require('./routes/subjectRoutes');
+const difficultyRoutes = require('./routes/difficultyRoutes');
+const sectionRoutes = require('./routes/sectionRoutes');
+const challengeRoutes = require('./routes/challengeRoutes');
 
 const  {sequelize}  = require('./models');
 
@@ -17,6 +21,10 @@ app.use(cookieParser());
 
 app.use('/auth', authRoutes);
 app.use('/profile', profileRoutes);
+app.use('/subjects', subjectRoutes);
+app.use('/difficulties', difficultyRoutes);
+app.use('/sections', sectionRoutes);
+app.use('/challenges', challengeRoutes);
 
 (async () => {
   try {
