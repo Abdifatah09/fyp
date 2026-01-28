@@ -21,7 +21,7 @@ export default function Navbar() {
           alt="App logo"
           className="h-8 w-auto"
         />
-        <span className="text-lg font-semibold">CodePlatform</span>
+        <span className="text-lg font-semibold">HackPath</span>
       </Link> 
 
       <div className="flex items-center gap-6 text-sm">
