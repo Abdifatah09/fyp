@@ -22,16 +22,17 @@ const ChallengeAttempt = sequelize.define(
 
     submittedCode: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: false,
     },
 
     isCorrect: {
       type: DataTypes.BOOLEAN,
+      allowNull: false,
       defaultValue: false,
     },
 
-    score: {
-      type: DataTypes.INTEGER,
+    feedback: {
+      type: DataTypes.TEXT,
       allowNull: true,
     },
   },
