@@ -6,8 +6,8 @@ router.post("/", requireAuth, requireAdmin, subjectController.createSubject);
 router.put("/:id", requireAuth, requireAdmin, subjectController.updateSubject);
 router.delete("/:id", requireAuth, requireAdmin, subjectController.deleteSubject);
 
-router.get("/", requireAuth, subjectController.getSubjects);
-router.get("/:id", requireAuth, subjectController.getSubjectById);
+router.get("/",subjectController.getSubjects);
+router.get("/:id", subjectController.getSubjectById);
 
 
 module.exports = router;

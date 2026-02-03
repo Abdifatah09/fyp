@@ -4,5 +4,6 @@ const challengeAttemptController = require("../controllers/challengeAttemptContr
 
 router.post("/submit", requireAuth, challengeAttemptController.submitAttempt);
 router.get("/me", requireAuth, challengeAttemptController.getMyAttempts);
+router.get("/:id", requireAuth, challengeAttemptController.getAttemptById);
 
 module.exports = router;

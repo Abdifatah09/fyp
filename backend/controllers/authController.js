@@ -45,12 +45,24 @@ exports.register = async (req, res) => {
       emailVerificationExpiresAt: expires,
     });
 
-    await sendOtpEmail(user.email, code, "VERIFY_EMAIL");
+    let emailSent = true;
+
+    try {
+      await sendOtpEmail(user.email, code, "VERIFY_EMAIL");
+    } catch (emailErr) {
+      emailSent = false;
+      console.error("OTP email failed:", emailErr.message);
+      
+    }
 
     return res.status(201).json({
-      message: "Registered successfully. Verification code sent to your email.",
+      message: emailSent
+        ? "Registered successfully. Verification code sent to your email."
+        : "Registered successfully. Unable to send verification email right now. Please try resending the code.",
       email: user.email,
+      emailSent,
     });
+
   } catch (err) {
     console.error("Register error:", err);
     return res.status(500).json({ message: "Internal server error" });
@@ -215,9 +227,23 @@ exports.forgotPassword = async (req, res) => {
       passwordResetExpiresAt: expires,
     });
 
-    await sendOtpEmail(email, code, "RESET_PASSWORD");
+   let emailSent = true;
 
-    return res.json(genericMsg);
+    try {
+      await sendOtpEmail(user.email, code, "VERIFY_EMAIL");
+    } catch (emailErr) {
+      emailSent = false;
+      console.error("OTP email failed:", emailErr.message);
+    }
+
+    return res.status(201).json({
+      message: emailSent
+        ? "Registered successfully. Verification code sent to your email."
+        : "Registered successfully. Unable to send verification email right now. Please try resending the code.",
+      email: user.email,
+      emailSent,
+    });
+
   } catch (err) {
     console.error("forgotPassword error:", err);
     return res.status(500).json({ message: "Internal server error" });
