@@ -11,6 +11,15 @@ import VerifyEmail from "../pages/VerifyEmail";
 import AdminRoute from "./AdminRoute";
 import AdminCurriculum from "../pages/AdminCurriculum";
 import Home from "../pages/Home";
+import ProgressOverview from "../pages/ProgressOverview";
+import SubjectsProgress from "../pages/SubjectsProgress";
+import SubjectDetail from "../pages/SubjectDetail";
+import DifficultiesProgress from "../pages/DifficultiesProgress";
+import DifficultyDetail from "../pages/DifficultyDetail";
+import SectionsProgress from "../pages/SectionsProgress";
+import SectionDetail from "../pages/SectionDetail";
+import ProgressByChallenge from "../pages/ProgressByChallenge";
+
 
 
 export default function AppRoutes() {
@@ -21,6 +30,14 @@ export default function AppRoutes() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/" element={<Home />} />
+      <Route path="/progress" element={<ProgressOverview />} />
+      <Route path="/progress/subjects" element={<SubjectsProgress />} />
+      <Route path="/progress/subjects/:subjectId" element={<SubjectDetail />} />
+      <Route path="/progress/difficulties" element={<DifficultiesProgress />}/>
+      <Route path="/progress/difficulties/:difficultyId" element={<DifficultyDetail />} />
+      <Route path="/progress/sections" element={<SectionsProgress />} />
+      <Route path="/progress/sections/:sectionId" element={<SectionDetail />} />
+      <Route path="/progress/challenges" element={<ProgressByChallenge />} />
       <Route
         path="/profile"
         element={
