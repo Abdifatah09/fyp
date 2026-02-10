@@ -31,17 +31,23 @@ export function AuthProvider({ children }) {
   };
 
   const clearSession = () => {
-    localStorage.removeItem("accessToken");
-    setUser(null);
-  };
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken"); 
+  setUser(null);
+};
+
 
   const login = async (email, password) => {
-    const data = await authService.login({ email, password });
-    const accessToken = data.accessToken || data.token;
-    await setSession(accessToken);
+  const data = await authService.login({ email, password });
 
-    return data;
-  };
+  const accessToken = data.accessToken || data.token;
+  const refreshToken = data.refreshToken; 
+
+  if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
+  await setSession(accessToken);
+
+  return data;
+};
 
   const register = async (payload) => {
     const res = await authService.register(payload);

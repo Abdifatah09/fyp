@@ -6,8 +6,8 @@ router.post("/", requireAuth, requireAdmin, challengeController.createChallenge)
 router.put("/:id", requireAuth, requireAdmin,challengeController.updateChallenge);
 router.delete("/:id", requireAuth, requireAdmin,challengeController.deleteChallenge);
 
-router.get("/",  requireAuth,challengeController.getChallenges);
-router.get("/:id", requireAuth, challengeController.getChallengeById);
-router.get("/section/:sectionId", requireAuth, challengeController.getChallengesBySectionId);
+router.get("/", challengeController.getChallenges);
+router.get("/:id", challengeController.getChallengeById);
+router.get("/section/:sectionId", challengeController.getChallengesBySectionId);
 
 module.exports = router;
