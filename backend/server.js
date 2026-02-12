@@ -11,6 +11,7 @@ const sectionRoutes = require('./routes/sectionRoutes');
 const challengeRoutes = require('./routes/challengeRoutes');
 const progressRoutes = require('./routes/progressRoutes');
 const attemptRoutes = require('./routes/attemptRoutes');
+const subscriptionRoutes = require('./routes/subscriptionRoutes');
 
 const  {sequelize}  = require('./models');
 
@@ -29,6 +30,7 @@ app.use('/sections', sectionRoutes);
 app.use('/challenges', challengeRoutes);
 app.use("/attempts", attemptRoutes);
 app.use("/progress", progressRoutes);
+app.use("/subscriptions", subscriptionRoutes);
 
 (async () => {
   try {

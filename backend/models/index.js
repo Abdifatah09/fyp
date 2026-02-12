@@ -7,6 +7,7 @@ const Difficulty = require('./difficulty');
 const Subject = require('./subject');
 const ChallengeAttempt = require('./challengeAttempt');
 const Challenge = require('./challenge');
+const UserSubscription = require("./UserSubscription");
 
 
 User.hasOne(Profile, { 
@@ -81,6 +82,36 @@ ChallengeAttempt.belongsTo(Challenge, {
   as: "challenge",
 });
 
+User.belongsToMany(Difficulty, {
+  through: UserSubscription,
+  foreignKey: "userId",
+  otherKey: "difficultyId",
+});
+
+Difficulty.belongsToMany(User, {
+  through: UserSubscription,
+  foreignKey: "difficultyId",
+  otherKey: "userId",
+});
+
+UserSubscription.belongsTo(User, { 
+  foreignKey: "userId" 
+});
+
+UserSubscription.belongsTo(Difficulty, { 
+  foreignKey: "difficultyId" 
+});
+
+User.hasMany(UserSubscription, { 
+  foreignKey: "userId" 
+});
+
+Difficulty.hasMany(UserSubscription, { 
+  foreignKey: "difficultyId" 
+});
+
+
+
 module.exports = {
   sequelize,
   User,
@@ -91,4 +122,5 @@ module.exports = {
   Subject,
   ChallengeAttempt,
   Challenge,
+  UserSubscription,
 };
