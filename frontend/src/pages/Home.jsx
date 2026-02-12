@@ -101,24 +101,23 @@ export default function Home() {
               </div>
             </div>
 
-      {/* Right: Image */}
-      <div className="flex justify-center lg:justify-end">
-        <div className="relative w-full max-w-lg">
-          {/* glow */}
-          <div className="absolute -inset-5 rounded-3xl bg-blue-500/20 blur-3xl" />
-
-          <img
-            src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=900&fit=crop"
-            // src= {logo}
-            alt="Gamified Coding Platform"
-            className="relative w-full rounded-3xl border border-white/10 shadow-2xl object-cover aspect-[4/3]"
-            loading="lazy"
-          />
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+            {/* Right: Image */}
+            <div className="flex justify-center lg:justify-end">
+               <div className="relative w-full max-w-lg">
+                {/* glow */}
+                <div className="absolute -inset-5 rounded-3xl bg-blue-500/20 blur-3xl" />
+                  <img
+                    src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=900&fit=crop"
+                    // src= {logo}
+                    alt="Gamified Coding Platform"
+                    className="relative w-full rounded-3xl border border-white/10 shadow-2xl object-cover aspect-[4/3]"
+                    loading="lazy"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+      </section>
 
 
       {/* SUBJECTS */}

@@ -19,6 +19,7 @@ import DifficultyDetail from "../pages/DifficultyDetail";
 import SectionsProgress from "../pages/SectionsProgress";
 import SectionDetail from "../pages/SectionDetail";
 import ProgressByChallenge from "../pages/ProgressByChallenge";
+import MyPathDifficulty from "../pages/MyPathDifficulty";
 
 
 
@@ -30,14 +31,71 @@ export default function AppRoutes() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/" element={<Home />} />
-      <Route path="/progress" element={<ProgressOverview />} />
-      <Route path="/progress/subjects" element={<SubjectsProgress />} />
-      <Route path="/progress/subjects/:subjectId" element={<SubjectDetail />} />
-      <Route path="/progress/difficulties" element={<DifficultiesProgress />}/>
-      <Route path="/progress/difficulties/:difficultyId" element={<DifficultyDetail />} />
-      <Route path="/progress/sections" element={<SectionsProgress />} />
-      <Route path="/progress/sections/:sectionId" element={<SectionDetail />} />
-      <Route path="/progress/challenges" element={<ProgressByChallenge />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
+
+      <Route 
+        path="/progress" 
+        element={
+          <ProtectedRoute>
+            <ProgressOverview />
+          </ProtectedRoute>
+        } />
+      <Route 
+        path="/progress/subjects" 
+        element={
+          <ProtectedRoute>
+            <SubjectsProgress />
+          </ProtectedRoute>
+        } />
+      <Route 
+      path="/progress/subjects/:subjectId" 
+      element={
+        <ProtectedRoute>
+          <SubjectDetail />
+        </ProtectedRoute>
+      } />
+      <Route 
+       path="/progress/difficulties"
+        element={
+          <ProtectedRoute>
+            <DifficultiesProgress />
+          </ProtectedRoute>
+        } />
+      <Route 
+        path="/progress/difficulties/:difficultyId" 
+        element={
+          <ProtectedRoute>
+            <DifficultyDetail />
+          </ProtectedRoute>
+        } />
+      <Route 
+        path="/progress/sections" 
+        element={
+          <ProtectedRoute>
+            <SectionsProgress />
+          </ProtectedRoute>
+        } />
+      <Route 
+        path="/progress/sections/:sectionId" 
+        element={
+          <ProtectedRoute>
+            <SectionDetail />
+          </ProtectedRoute>
+        } />
+      <Route 
+      path="/progress/challenges" 
+      element={
+        <ProtectedRoute>
+          <ProgressByChallenge />
+        </ProtectedRoute>
+      } />
+      <Route 
+        path="/my-path/:difficultyId" 
+        element={
+          <ProtectedRoute>
+            <MyPathDifficulty />
+          </ProtectedRoute>
+        } />     
       <Route
         path="/profile"
         element={
@@ -45,9 +103,7 @@ export default function AppRoutes() {
             <Profile />
           </ProtectedRoute>
         }
-      /> 
-      <Route path="/verify-email" element={<VerifyEmail />} />
-       
+      />   
       <Route
         path="/dashboard"
         element={
@@ -64,7 +120,6 @@ export default function AppRoutes() {
          </AdminRoute>
         }
       />
-
     </Routes>
   );
 }
