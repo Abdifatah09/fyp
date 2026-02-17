@@ -20,7 +20,8 @@ import SectionsProgress from "../pages/SectionsProgress";
 import SectionDetail from "../pages/SectionDetail";
 import ProgressByChallenge from "../pages/ProgressByChallenge";
 import MyPathDifficulty from "../pages/MyPathDifficulty";
-
+import DifficultyChallenges from "../pages/DifficultyChallenges";
+import SolveChallenge from "../pages/SolveChallenge";
 
 
 export default function AppRoutes() {
@@ -90,7 +91,7 @@ export default function AppRoutes() {
         </ProtectedRoute>
       } />
       <Route 
-        path="/my-path/:difficultyId" 
+        path="/my-path/difficulty/:difficultyId" 
         element={
           <ProtectedRoute>
             <MyPathDifficulty />
@@ -109,6 +110,22 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/my-path/difficulty/:difficultyId/solve"
+        element={
+          <ProtectedRoute>
+            <DifficultyChallenges />
+          </ProtectedRoute>
+        }
+      />
+        <Route
+        path="/challenges/:id/solve"
+        element={
+          <ProtectedRoute>
+            <SolveChallenge />
           </ProtectedRoute>
         }
       />
