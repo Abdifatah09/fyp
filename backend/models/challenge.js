@@ -40,6 +40,12 @@ const Challenge = sequelize.define(
       allowNull: false,
     },
 
+    languageId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 63, 
+    },
+
     sectionId: {
       type: DataTypes.UUID,
       allowNull: false,

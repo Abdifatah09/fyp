@@ -31,6 +31,11 @@ const ChallengeAttempt = sequelize.define(
       defaultValue: false,
     },
 
+    languageId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+
     feedback: {
       type: DataTypes.TEXT,
       allowNull: true,
