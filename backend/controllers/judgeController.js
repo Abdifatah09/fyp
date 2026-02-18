@@ -8,6 +8,8 @@ const {
   yesterdayISO,
 } = require("../utils/gamification");
 
+const { checkAndAwardAchievements } = require("../utils/achievementService");
+
 function normalize(s) {
   return String(s ?? "").replace(/\r\n/g, "\n").trim();
 }
@@ -200,6 +202,14 @@ exports.submit = async (req, res) => {
 
     await stats.save();
 
+    const ach = await checkAndAwardAchievements(userId);
+
+    // If achievements added XP, your level might change again:
+     const leveled2 = applyLevelUps({ xp: stats.xp, level: stats.level });
+     stats.level = leveled2.level;
+     await stats.save();
+
+
     // 5) Return everything the frontend needs
     return res.status(201).json({
       gradable: true,
@@ -215,6 +225,10 @@ exports.submit = async (req, res) => {
         nextLevelXp: leveled.nextLevelXp,
       },
       expectedOutput: solRun.stdout || "",
+      achievements: {
+        newlyEarned: ach.newlyEarned,
+        xpFromAchievements: ach.xpFromAchievements,
+      },
       run: {
         status: userRun.status,
         stdout: userRun.stdout,

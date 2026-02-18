@@ -35,6 +35,20 @@ export default function SolveChallenge() {
   const [result, setResult] = useState(null);
   const [activeTab, setActiveTab] = useState("stdout"); // stdout | stderr | compile
 
+  const [toasts, setToasts] = useState([]);
+
+  const pushToast = (t) => {
+  const id = Date.now() + Math.random();
+  const toast = { id, ...t };
+
+  setToasts((prev) => [toast, ...prev].slice(0, 3));
+
+  setTimeout(() => {
+      setToasts((prev) => prev.filter((x) => x.id !== id));
+    }, 4000);
+  };
+
+
   const monacoLang = useMemo(
     () => judge0ToMonaco(challenge?.languageId),
     [challenge?.languageId]
@@ -85,6 +99,15 @@ export default function SolveChallenge() {
 
       setResult(res);
 
+      const newly = res?.achievements?.newlyEarned || [];
+        for (const a of newly) {
+        pushToast({
+        title: "Achievement Unlocked 🏆",
+        message: `${a.name} (+${a.xpReward || 0} XP)`,
+      });
+    }
+
+
       // auto switch to relevant tab if there is an error
       const hasCompile = normalize(res?.run?.compile_output);
       const hasStderr = normalize(res?.run?.stderr);
@@ -131,7 +154,7 @@ export default function SolveChallenge() {
 
   if (loading) {
     return (
-      <div className="p-6">
+        <div className="p-6">
         <div className="max-w-6xl mx-auto">
           <div className="rounded-2xl border p-6 animate-pulse">
             <div className="h-6 w-1/2 bg-gray-200 rounded" />
@@ -177,6 +200,20 @@ export default function SolveChallenge() {
 
   return (
     <div className="p-6">
+    
+        {/* Achievement Toasts */}
+        <div className="fixed top-5 right-5 z-50 space-y-3">
+          {toasts.map((t) => (
+           <div
+             key={t.id}
+             className="w-[320px] rounded-2xl border bg-white shadow-lg p-4"
+          >
+             <p className="font-semibold text-slate-900">{t.title}</p>
+             <p>i work</p>
+              <p className="text-sm text-slate-600 mt-1">{t.message}</p>
+          </div>
+        ))}
+      </div>
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Top header */}
         <div className="rounded-2xl border bg-white p-6 shadow-sm">

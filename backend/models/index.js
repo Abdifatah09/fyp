@@ -9,6 +9,8 @@ const ChallengeAttempt = require('./challengeAttempt');
 const Challenge = require('./challenge');
 const UserSubscription = require("./UserSubscription");
 const UserStats = require("./userStats");
+const Achievement = require("./achievement");
+const UserAchievement = require("./userAchievement");
 
 
 User.hasOne(Profile, { 
@@ -122,7 +124,25 @@ UserStats.belongsTo(User, {
   as: "user" 
 });
 
+Achievement.hasMany(UserAchievement, {
+  foreignKey: "achievementId",
+  as: "userAchievements",
+});
 
+UserAchievement.belongsTo(Achievement, {
+  foreignKey: "achievementId",
+  as: "achievement",
+});
+
+User.hasMany(UserAchievement, {
+  foreignKey: "userId",
+  as: "achievements",
+});
+
+UserAchievement.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+});
 
 module.exports = {
   sequelize,
@@ -136,4 +156,6 @@ module.exports = {
   Challenge,
   UserSubscription,
   UserStats,
+  Achievement,
+  UserAchievement,
 };
