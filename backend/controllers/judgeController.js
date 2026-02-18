@@ -1,74 +1,126 @@
-const Challenge = require("../models/challenge");
-const ChallengeAttempt = require("../models/challengeAttempt");
-const { createSubmission } = require("../utils/judge0Service");
+// controllers/judgeController.js
 
-const normalize = (s) => String(s ?? "").replace(/\r\n/g, "\n").trim();
-const ALLOWED_LANGS = new Set([102, 91]); // JS + Java
+const { Challenge, ChallengeAttempt, UserStats } = require("../models");
+const { createSubmission } = require("../utils/judge0Service");
+const {
+  applyLevelUps,
+  toISODateOnly,
+  yesterdayISO,
+} = require("../utils/gamification");
+
+function normalize(s) {
+  return String(s ?? "").replace(/\r\n/g, "\n").trim();
+}
+
+// Fixes double-escaped strings coming from DB/admin UI (e.g. "\\n", '\\"')
+function decodeEscapes(s) {
+  return String(s ?? "")
+    .replace(/\\n/g, "\n") // literal \n -> newline
+    .replace(/\\r/g, "\r") // literal \r -> carriage return
+    .replace(/\\"/g, '"') // \" -> "
+    .replace(/\\\\/g, "\\"); // \\ -> \
+}
+
+// If solution accidentally stored as a quoted string: "console.log(...)"
+function stripWrappingQuotes(s) {
+  const t = String(s ?? "").trim();
+  if (
+    (t.startsWith('"') && t.endsWith('"')) ||
+    (t.startsWith("'") && t.endsWith("'"))
+  ) {
+    return t.slice(1, -1);
+  }
+  return t;
+}
 
 exports.submit = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { challengeId, languageId, sourceCode, stdin } = req.body;
 
-    if (!challengeId || !languageId || !sourceCode) {
-      return res
-        .status(400)
-        .json({ message: "challengeId, languageId, sourceCode are required" });
-    }
+    // frontend sends: challengeId, sourceCode, stdin(optional)
+    const { challengeId, sourceCode, stdin = "" } = req.body;
 
-    const lang = Number(languageId);
-    if (!ALLOWED_LANGS.has(lang)) {
-      return res.status(400).json({ message: "Unsupported language" });
+    if (!challengeId || !sourceCode) {
+      return res.status(400).json({
+        message: "challengeId and sourceCode are required",
+      });
     }
 
     const challenge = await Challenge.findByPk(challengeId);
-    if (!challenge) return res.status(404).json({ message: "Challenge not found" });
+    if (!challenge)
+      return res.status(404).json({ message: "Challenge not found" });
 
     if (!challenge.solution) {
-      return res.status(400).json({ message: "Challenge has no solution set yet" });
+      return res.status(400).json({
+        message: "Challenge has no solution set yet (cannot auto-mark).",
+      });
     }
 
-    // 1) Run user code
+    const languageId = Number(challenge.languageId);
+    if (!languageId) {
+      return res.status(400).json({
+        message: "Challenge is missing languageId (cannot run Judge0).",
+      });
+    }
+
+    // Decode any accidental escaping in stored fields
+    const decodedStarter = decodeEscapes(challenge.starterCode || "");
+    const decodedSolution = stripWrappingQuotes(
+      decodeEscapes(challenge.solution || "")
+    );
+
+    // IMPORTANT: run starter + solution so oracle has the scaffold variables etc.
+    const oracleSource = `${decodedStarter}\n${decodedSolution}`;
+
+    // 1) Run user's code
     const userRun = await createSubmission({
-      languageId: lang,
+      languageId,
       sourceCode,
-      stdin: stdin || "",
+      stdin,
     });
 
-    const userOk = userRun?.status?.id === 3;
+    const userStatusId = userRun?.status?.id;
+    const userOk = userStatusId === 3; // Accepted
 
-    // 2) Run solution code (oracle)
+    // 2) Run stored solution as oracle
     const solRun = await createSubmission({
-      languageId: lang,
-      sourceCode: challenge.solution,
-      stdin: stdin || "",
+      languageId,
+      sourceCode: oracleSource,
+      stdin,
     });
 
-    const solOk = solRun?.status?.id === 3;
+    const solStatusId = solRun?.status?.id;
+    const solOk = solStatusId === 3;
 
-    // If solution fails, store attempt as incorrect but explain it
+    // If the solution fails, we can't grade reliably.
     if (!solOk) {
+      const feedback =
+        "Grading unavailable: stored solution failed to run. Please contact admin.";
+
       const attempt = await ChallengeAttempt.create({
         userId,
         challengeId,
-        languageId: lang,
+        languageId,
         submittedCode: sourceCode,
         isCorrect: false,
-        feedback:
-          "Grading unavailable: the stored solution failed to run. Please contact admin.",
+        feedback,
       });
 
       return res.status(201).json({
+        gradable: false,
         isCorrect: false,
         feedback: attempt.feedback,
         attempt,
-        gradable: false,
-        userRun: {
+        expectedOutput: solRun.stdout || "",
+        run: {
           status: userRun.status,
           stdout: userRun.stdout,
           stderr: userRun.stderr,
           compile_output: userRun.compile_output,
+          time: userRun.time,
+          memory: userRun.memory,
         },
+        // keep this for debugging in frontend; remove later if you want
         solutionRun: {
           status: solRun.status,
           stdout: solRun.stdout,
@@ -78,11 +130,13 @@ exports.submit = async (req, res) => {
       });
     }
 
-    const expectedOut = normalize(solRun.stdout);
-    const actualOut = normalize(userRun.stdout);
+    // Compare outputs (stdout)
+    const expectedOutput = normalize(solRun.stdout);
+    const actualOutput = normalize(userRun.stdout);
 
-    const isCorrect = userOk && actualOut === expectedOut;
+    const isCorrect = userOk && actualOutput === expectedOutput;
 
+    // feedback
     let feedback = isCorrect ? "Correct ✅" : "Incorrect ❌";
 
     if (!userOk) {
@@ -93,31 +147,79 @@ exports.submit = async (req, res) => {
         "Your code did not run successfully.";
       feedback = `Incorrect ❌\n\n${details}`;
     } else if (!isCorrect) {
-      feedback = `Incorrect ❌\n\nExpected Output:\n${solRun.stdout || ""}\n\nYour Output:\n${userRun.stdout || ""}`;
+      feedback = `Incorrect ❌\n\nExpected Output:\n${solRun.stdout || ""}\n\nYour Output:\n${
+        userRun.stdout || ""
+      }`;
     }
 
     // 3) Save attempt
     const attempt = await ChallengeAttempt.create({
       userId,
       challengeId,
-      languageId: lang,
+      languageId,
       submittedCode: sourceCode,
       isCorrect,
       feedback,
     });
 
-    // 4) Return result
+    // 4) Core gamification: XP + Level + Streak
+    let stats = await UserStats.findOne({ where: { userId } });
+    if (!stats) stats = await UserStats.create({ userId });
+
+    const today = toISODateOnly(new Date());
+
+    // streak logic
+    if (!stats.lastActiveDate) {
+      stats.streakCount = 1;
+      stats.lastActiveDate = today;
+    } else if (stats.lastActiveDate === today) {
+      // no change
+    } else if (stats.lastActiveDate === yesterdayISO(today)) {
+      stats.streakCount += 1;
+      stats.lastActiveDate = today;
+    } else {
+      stats.streakCount = 1;
+      stats.lastActiveDate = today;
+    }
+
+    // XP only if correct
+    let xpGained = 0;
+
+    if (isCorrect) {
+      // first-correct bonus: if they haven't already passed this challenge before
+      const prevCorrect = await ChallengeAttempt.findOne({
+        where: { userId, challengeId, isCorrect: true },
+      });
+
+      xpGained = prevCorrect ? 10 : 20;
+      stats.xp += xpGained;
+    }
+
+    const leveled = applyLevelUps({ xp: stats.xp, level: stats.level });
+    stats.level = leveled.level;
+
+    await stats.save();
+
+    // 5) Return everything the frontend needs
     return res.status(201).json({
+      gradable: true,
       isCorrect,
       feedback,
-      gradable: true,
       attempt,
-      expectedOutput: solRun.stdout,
+      xpGained,
+      stats: {
+        xp: stats.xp,
+        level: stats.level,
+        streakCount: stats.streakCount,
+        lastActiveDate: stats.lastActiveDate,
+        nextLevelXp: leveled.nextLevelXp,
+      },
+      expectedOutput: solRun.stdout || "",
       run: {
+        status: userRun.status,
         stdout: userRun.stdout,
         stderr: userRun.stderr,
         compile_output: userRun.compile_output,
-        status: userRun.status,
         time: userRun.time,
         memory: userRun.memory,
       },

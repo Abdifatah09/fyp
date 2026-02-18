@@ -8,6 +8,7 @@ const Subject = require('./subject');
 const ChallengeAttempt = require('./challengeAttempt');
 const Challenge = require('./challenge');
 const UserSubscription = require("./UserSubscription");
+const UserStats = require("./userStats");
 
 
 User.hasOne(Profile, { 
@@ -110,6 +111,17 @@ Difficulty.hasMany(UserSubscription, {
   foreignKey: "difficultyId" 
 });
 
+User.hasOne(UserStats, { 
+  foreignKey: "userId",
+  as: "stats", 
+  onDelete: "CASCADE" 
+});
+
+UserStats.belongsTo(User, { 
+  foreignKey: "userId", 
+  as: "user" 
+});
+
 
 
 module.exports = {
@@ -123,4 +135,5 @@ module.exports = {
   ChallengeAttempt,
   Challenge,
   UserSubscription,
+  UserStats,
 };

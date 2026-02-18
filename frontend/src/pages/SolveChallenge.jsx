@@ -50,7 +50,15 @@ export default function SolveChallenge() {
         const data = await challengeService.getById(id);
         setChallenge(data);
 
-        setCode(data?.starterCode || "");
+       const decodeStarter = (s) =>
+          String(s ?? "")
+          .replace(/\\n/g, "\n")   // turn literal \n into real newline
+          .replace(/\\r/g, "\r")
+          .replace(/\\"/g, '"')   // turn \" into "
+          .replace(/\\\\/g, "\\"); // turn \\ into \
+
+       setCode(decodeStarter(data?.starterCode));
+
         setStdin("");
       } catch (e) {
         setErr(e?.response?.data?.message || "Failed to load challenge");

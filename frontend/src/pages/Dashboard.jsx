@@ -1,9 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+
 import { subjectService } from "../services/subjectService";
 import { difficultyService } from "../services/difficultyService";
 import { subscriptionService } from "../services/subscriptionService";
+
+import { gamificationService } from "../services/gamificationService";
+import { leaderboardService } from "../services/leaderboardService";
+
+import LevelCard from "../components/LevelCard";
+import StreakCard from "../components/StreakCard";
+import LeaderboardPreview from "../components/LeaderboardPreview";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -11,8 +19,12 @@ export default function Dashboard() {
 
   const [subjects, setSubjects] = useState([]);
   const [difficulties, setDifficulties] = useState([]);
-
   const [subs, setSubs] = useState([]);
+
+  // gamification
+  const [stats, setStats] = useState(null);
+  const [leaderboard, setLeaderboard] = useState([]);
+
   const [activeSubjectId, setActiveSubjectId] = useState("");
 
   const [loading, setLoading] = useState(true);
@@ -27,7 +39,9 @@ export default function Dashboard() {
 
   const difficultiesForActiveSubject = useMemo(() => {
     if (!activeSubjectId) return [];
-    return difficulties.filter((d) => String(d.subjectId) === String(activeSubjectId));
+    return difficulties.filter(
+      (d) => String(d.subjectId) === String(activeSubjectId)
+    );
   }, [difficulties, activeSubjectId]);
 
   const loadEverything = async () => {
@@ -35,21 +49,31 @@ export default function Dashboard() {
       setErr("");
       setLoading(true);
 
-      const [subsData, subjectsData, diffsData] = await Promise.all([
+      const [
+        subsData,
+        subjectsData,
+        diffsData,
+        statsData,
+        lbData,
+      ] = await Promise.all([
         subscriptionService.mine(),
         subjectService.getAll(),
         difficultyService.getAll(),
+        gamificationService.me(),
+        leaderboardService.global(5),
       ]);
 
       setSubs(subsData || []);
       setSubjects(subjectsData || []);
       setDifficulties(diffsData || []);
+      setStats(statsData || null);
+      setLeaderboard(lbData || []);
 
-      // auto pick first subject
+      // auto pick first subject (only if none selected)
       const firstSubj = (subjectsData || [])[0];
-      if (firstSubj) setActiveSubjectId(firstSubj.id);
+      if (!activeSubjectId && firstSubj) setActiveSubjectId(firstSubj.id);
     } catch (e) {
-      setErr("Failed to load dashboard data");
+      setErr(e?.response?.data?.message || "Failed to load dashboard data");
     } finally {
       setLoading(false);
     }
@@ -60,12 +84,19 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const refreshSubscriptionsOnly = async () => {
+    try {
+      const fresh = await subscriptionService.mine();
+      setSubs(fresh || []);
+    } catch {
+      setErr("Failed to refresh subscriptions.");
+    }
+  };
+
   const handleSubscribe = async (difficultyId) => {
     try {
       await subscriptionService.subscribe(difficultyId);
-      // refresh subs list (simple + reliable)
-      const fresh = await subscriptionService.mine();
-      setSubs(fresh || []);
+      await refreshSubscriptionsOnly();
     } catch {
       setErr("Failed to subscribe. Please try again.");
     }
@@ -74,8 +105,7 @@ export default function Dashboard() {
   const handleUnsubscribe = async (difficultyId) => {
     try {
       await subscriptionService.unsubscribe(difficultyId);
-      const fresh = await subscriptionService.mine();
-      setSubs(fresh || []);
+      await refreshSubscriptionsOnly();
     } catch {
       setErr("Failed to unsubscribe. Please try again.");
     }
@@ -94,6 +124,13 @@ export default function Dashboard() {
         {err && <p className="mt-2 text-red-600">{err}</p>}
       </div>
 
+      {/* Gamification Cards */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <LevelCard stats={stats} />
+        <StreakCard stats={stats} />
+        <LeaderboardPreview rows={leaderboard} />
+      </section>
+
       {/* My Subscriptions */}
       <section className="space-y-4">
         <div className="flex items-end justify-between gap-4">
@@ -107,7 +144,7 @@ export default function Dashboard() {
         </div>
 
         {subs.length === 0 ? (
-          <div className="rounded-xl border p-5">
+          <div className="rounded-xl border p-5 bg-white">
             <p className="font-medium">No subscriptions yet</p>
             <p className="text-sm text-gray-600 mt-1">
               Subscribe to a difficulty below and it will show up here.
@@ -120,7 +157,10 @@ export default function Dashboard() {
               const subject = difficulty?.subject;
 
               return (
-                <div key={sub.id || difficulty.id} className="border rounded-xl p-5">
+                <div
+                  key={sub.id || difficulty.id}
+                  className="border rounded-xl p-5 bg-white"
+                >
                   <p className="text-xs uppercase tracking-wide text-gray-500">
                     {subject?.name || "Subject"}
                   </p>
@@ -128,7 +168,9 @@ export default function Dashboard() {
 
                   <div className="mt-4 flex gap-3">
                     <button
-                      onClick={() => navigate(`/my-path/difficulty/${difficulty.id}`)}
+                      onClick={() =>
+                        navigate(`/my-path/difficulty/${difficulty.id}`)
+                      }
                       className="rounded-lg bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700 transition"
                     >
                       Continue
@@ -174,7 +216,7 @@ export default function Dashboard() {
             const isSubbed = subscribedDifficultyIds.has(String(d.id));
 
             return (
-              <div key={d.id} className="border rounded-xl p-5">
+              <div key={d.id} className="border rounded-xl p-5 bg-white">
                 <p className="text-xs uppercase tracking-wide text-gray-500">
                   Difficulty
                 </p>
@@ -184,7 +226,9 @@ export default function Dashboard() {
                   {isSubbed ? (
                     <>
                       <button
-                        onClick={() => navigate(`/my-path/difficulty/${d.id}`)}
+                        onClick={() =>
+                          navigate(`/my-path/difficulty/${d.id}`)
+                        }
                         className="rounded-lg bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700 transition"
                       >
                         Open
