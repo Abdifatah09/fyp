@@ -11,6 +11,8 @@ const UserSubscription = require("./UserSubscription");
 const UserStats = require("./userStats");
 const Achievement = require("./achievement");
 const UserAchievement = require("./userAchievement");
+const Badge = require("./badge");
+const UserBadge = require("./userBadge");
 
 
 User.hasOne(Profile, { 
@@ -144,6 +146,36 @@ UserAchievement.belongsTo(User, {
   as: "user",
 });
 
+User.belongsToMany(Badge, {
+  through: UserBadge,
+  foreignKey: "userId",
+  otherKey: "badgeId",
+});
+
+Badge.belongsToMany(User, {
+  through: UserBadge,
+  foreignKey: "badgeId",
+  otherKey: "userId",
+});
+
+UserBadge.belongsTo(User, { 
+  foreignKey: "userId" 
+});
+
+UserBadge.belongsTo(Badge, { 
+  foreignKey: "badgeId" ,
+  as: "badge"
+});
+
+User.hasMany(UserBadge, { 
+  foreignKey: "userId" 
+});
+
+Badge.hasMany(UserBadge, { 
+  foreignKey: "badgeId" ,
+  as: "badge"
+});
+
 module.exports = {
   sequelize,
   User,
@@ -158,4 +190,6 @@ module.exports = {
   UserStats,
   Achievement,
   UserAchievement,
+  Badge,
+  UserBadge,
 };

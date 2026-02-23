@@ -10,6 +10,7 @@ const {
 const { applyRank } = require("../utils/rank");
 
 const { checkAndAwardAchievements } = require("../utils/achievementService");
+const { checkAndAwardBadges } = require("../utils/badgeService");
 
 function normalize(s) {
   return String(s ?? "").replace(/\r\n/g, "\n").trim();
@@ -130,6 +131,9 @@ exports.submit = async (req, res) => {
           stderr: solRun.stderr,
           compile_output: solRun.compile_output,
         },
+        // keep shape consistent
+        achievements: { newlyEarned: [], xpFromAchievements: 0 },
+        badges: { newlyEarned: [], xpFromBadges: 0 },
       });
     }
 
@@ -203,16 +207,20 @@ exports.submit = async (req, res) => {
 
     await stats.save();
 
+    // Achievements (existing)
     const ach = await checkAndAwardAchievements(userId);
 
-    // If achievements added XP, your level might change again:
-     const leveled2 = applyLevelUps({ xp: stats.xp, level: stats.level });
-     stats.level = leveled2.level;
-     await stats.save();
-    
-    // ✅ Apply Rank after XP changes (including achievements XP)
+    // Badges (new)
+    const badgeResult = await checkAndAwardBadges(userId);
+
+    // If achievements/badges added XP, your level might change again:
+    const leveled2 = applyLevelUps({ xp: stats.xp, level: stats.level });
+    stats.level = leveled2.level;
+    await stats.save();
+
+    // ✅ Apply Rank after XP changes (including achievements/badges XP)
     const prevRank = stats.rank || "Bronze";
-    const rankResult = applyRank(stats);
+    applyRank(stats);
     await stats.save();
 
     // 5) Return everything the frontend needs
@@ -234,6 +242,10 @@ exports.submit = async (req, res) => {
       achievements: {
         newlyEarned: ach.newlyEarned,
         xpFromAchievements: ach.xpFromAchievements,
+      },
+      badges: {
+        newlyEarned: badgeResult.newlyEarned,
+        xpFromBadges: badgeResult.xpFromBadges,
       },
       rank: {
         current: stats.rank,
