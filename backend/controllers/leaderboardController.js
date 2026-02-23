@@ -9,7 +9,7 @@ exports.global = async (req, res) => {
       {
         model: UserStats,
         as: "stats",
-        attributes: ["xp", "level", "streakCount"],
+        attributes: ["xp", "level", "streakCount", "rank"],
         required: true,
       },
     ],
@@ -27,6 +27,7 @@ exports.global = async (req, res) => {
       name: u.name,
       xp: u.stats.xp,
       level: u.stats.level,
+      rank: u.stats.rank,
       streakCount: u.stats.streakCount,
     }))
   );

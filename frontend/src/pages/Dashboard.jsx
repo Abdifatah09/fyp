@@ -69,6 +69,9 @@ export default function Dashboard() {
       setStats(statsData || null);
       setLeaderboard(lbData || []);
 
+      console.log("statsData:", statsData);
+
+
       // auto pick first subject (only if none selected)
       const firstSubj = (subjectsData || [])[0];
       if (!activeSubjectId && firstSubj) setActiveSubjectId(firstSubj.id);
@@ -111,6 +114,20 @@ export default function Dashboard() {
     }
   };
 
+    const rankMeta = useMemo(() => {
+    const r = stats?.rank || "Bronze";
+    const map = {
+      Bronze: { icon: "🥉", cls: "bg-amber-50 text-amber-800 border-amber-200" },
+      Silver: { icon: "🥈", cls: "bg-slate-50 text-slate-800 border-slate-200" },
+      Gold: { icon: "🥇", cls: "bg-yellow-50 text-yellow-800 border-yellow-200" },
+      Platinum: { icon: "💎", cls: "bg-indigo-50 text-indigo-800 border-indigo-200" },
+      Diamond: { icon: "🔥", cls: "bg-rose-50 text-rose-800 border-rose-200" },
+      Master: { icon: "👑", cls: "bg-purple-50 text-purple-800 border-purple-200" },
+    };
+  return map[r] || { icon: "🏷️", cls: "bg-gray-50 text-gray-800 border-gray-200" };
+  }, [stats?.rank]);
+
+
   if (loading) {
     return <div className="p-6 text-gray-600">Loading dashboard...</div>;
   }
@@ -123,6 +140,15 @@ export default function Dashboard() {
         <p className="mt-2">Welcome {user?.name || user?.email} 👋</p>
         {err && <p className="mt-2 text-red-600">{err}</p>}
       </div>
+      {stats?.rank && (
+        <div className={`mt-3 inline-flex items-center gap-2 rounded-full border px-4 py-2 ${rankMeta.cls}`}>
+          <span className="text-lg leading-none">{rankMeta.icon}</span>
+          <span className="text-sm font-semibold">Rank:</span>
+          <span className="text-sm font-bold">{stats.rank}</span>
+          <span className="text-xs opacity-80">• Level {stats.level} • {stats.xp} XP</span>
+        </div>
+      )}
+
 
       {/* Gamification Cards */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">

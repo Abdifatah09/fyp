@@ -106,7 +106,14 @@ export default function SolveChallenge() {
         message: `${a.name} (+${a.xpReward || 0} XP)`,
       });
     }
-
+    
+    // Rank up toast
+    if (res?.rank?.rankUp) {
+      pushToast({
+      title: "Rank Up! 🎉",
+      message: `You are now ${res?.stats?.rank || res?.rank?.current}!`,
+    });
+  }
 
       // auto switch to relevant tab if there is an error
       const hasCompile = normalize(res?.run?.compile_output);
@@ -209,7 +216,6 @@ export default function SolveChallenge() {
              className="w-[320px] rounded-2xl border bg-white shadow-lg p-4"
           >
              <p className="font-semibold text-slate-900">{t.title}</p>
-             <p>i work</p>
               <p className="text-sm text-slate-600 mt-1">{t.message}</p>
           </div>
         ))}

@@ -1,7 +1,19 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext"; 
-import logo from "../assets/logo.png"; 
+import { useAuth } from "../context/AuthContext";
+import logo from "../assets/logo.png";
+import { gamificationService } from "../services/gamificationService";
+
+function rankIcon(rank) {
+  const r = String(rank || "").toLowerCase();
+  if (r === "master") return "👑";
+  if (r === "diamond") return "🔥";
+  if (r === "platinum") return "💎";
+  if (r === "gold") return "🥇";
+  if (r === "silver") return "🥈";
+  if (r === "bronze") return "🥉";
+  return "🏷️";
+}
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -9,6 +21,33 @@ export default function Navbar() {
   const { user, isReady, logout } = useAuth();
 
   const isAuthed = Boolean(user);
+
+  // ✅ gamification stats for rank chip
+  const [stats, setStats] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      try {
+        if (!isReady || !isAuthed) {
+          if (alive) setStats(null);
+          return;
+        }
+        const data = await gamificationService.me();
+        // supports either {stats:{...}} or direct
+        const normalized = data?.stats || data || null;
+        if (alive) setStats(normalized);
+      } catch {
+        // don’t break navbar if this fails
+        if (alive) setStats(null);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [isReady, isAuthed]);
 
   const linkClass = ({ isActive }) =>
     `text-sm font-medium transition ${
@@ -41,6 +80,7 @@ export default function Navbar() {
                 HackPath
               </span>
             </NavLink>
+
             <div className="flex items-center gap-6">
               {!isReady ? (
                 <div className="text-white/70 text-sm">Loading...</div>
@@ -59,6 +99,22 @@ export default function Navbar() {
                       Profile
                     </NavLink>
                   </nav>
+
+                  {/* ✅ Rank chip */}
+                  <button
+                    type="button"
+                    onClick={() => navigate("/achievements")}
+                    className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-xs font-semibold text-white hover:bg-white/15 transition"
+                    title="View your achievements"
+                  >
+                    <span className="text-base leading-none">
+                      {rankIcon(stats?.rank)}
+                    </span>
+                    <span>{stats?.rank || "Bronze"}</span>
+                    <span className="text-white/70 text-xs">
+                      • Lv {stats?.level || 1}
+                    </span>
+                  </button>
 
                   <button
                     onClick={handleLogout}

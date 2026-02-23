@@ -13,6 +13,7 @@ exports.me = async (req, res) => {
     xp: stats.xp,
     level: stats.level,
     streakCount: stats.streakCount,
+    rank: stats.rank,
     lastActiveDate: stats.lastActiveDate,
     nextLevelXp: leveled.nextLevelXp,
   });

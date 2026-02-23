@@ -29,6 +29,11 @@ const UserStats = sequelize.define(
       allowNull: false,
       defaultValue: 0,
     },
+    rank: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "Bronze",
+    },
     lastActiveDate: {
       type: DataTypes.DATEONLY,
       allowNull: true,

@@ -22,6 +22,7 @@ import ProgressByChallenge from "../pages/ProgressByChallenge";
 import MyPathDifficulty from "../pages/MyPathDifficulty";
 import DifficultyChallenges from "../pages/DifficultyChallenges";
 import SolveChallenge from "../pages/SolveChallenge";
+import Achievements from "../pages/Achievements";
 
 
 export default function AppRoutes() {
@@ -121,11 +122,19 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
-        <Route
+      <Route
         path="/challenges/:id/solve"
         element={
           <ProtectedRoute>
             <SolveChallenge />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/achievements"
+        element={
+          <ProtectedRoute>
+            <Achievements />
           </ProtectedRoute>
         }
       />

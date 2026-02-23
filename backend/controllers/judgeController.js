@@ -7,6 +7,7 @@ const {
   toISODateOnly,
   yesterdayISO,
 } = require("../utils/gamification");
+const { applyRank } = require("../utils/rank");
 
 const { checkAndAwardAchievements } = require("../utils/achievementService");
 
@@ -208,7 +209,11 @@ exports.submit = async (req, res) => {
      const leveled2 = applyLevelUps({ xp: stats.xp, level: stats.level });
      stats.level = leveled2.level;
      await stats.save();
-
+    
+    // ✅ Apply Rank after XP changes (including achievements XP)
+    const prevRank = stats.rank || "Bronze";
+    const rankResult = applyRank(stats);
+    await stats.save();
 
     // 5) Return everything the frontend needs
     return res.status(201).json({
@@ -223,11 +228,16 @@ exports.submit = async (req, res) => {
         streakCount: stats.streakCount,
         lastActiveDate: stats.lastActiveDate,
         nextLevelXp: leveled.nextLevelXp,
+        rank: stats.rank,
       },
       expectedOutput: solRun.stdout || "",
       achievements: {
         newlyEarned: ach.newlyEarned,
         xpFromAchievements: ach.xpFromAchievements,
+      },
+      rank: {
+        current: stats.rank,
+        rankUp: prevRank !== stats.rank,
       },
       run: {
         status: userRun.status,

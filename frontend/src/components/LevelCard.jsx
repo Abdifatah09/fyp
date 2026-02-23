@@ -1,7 +1,18 @@
 import React, { useMemo } from "react";
 
+function rankIcon(rank) {
+  const r = String(rank || "").toLowerCase();
+  if (r === "master") return "👑";
+  if (r === "diamond") return "🔥";
+  if (r === "platinum") return "💎";
+  if (r === "gold") return "🥇";
+  if (r === "silver") return "🥈";
+  if (r === "bronze") return "🥉";
+  return "🏷️";
+}
+
 export default function LevelCard({ stats }) {
-  const { xp = 0, level = 1, nextLevelXp = 100 } = stats || {};
+  const { xp = 0, level = 1, nextLevelXp = 100, rank } = stats || {};
 
   const pct = useMemo(() => {
     const denom = Math.max(nextLevelXp, 1);
@@ -14,6 +25,14 @@ export default function LevelCard({ stats }) {
         <div>
           <p className="text-xs uppercase tracking-wide text-gray-500">Level</p>
           <h3 className="text-2xl font-bold">Lv. {level}</h3>
+
+          {/* Rank */}
+          {rank && (
+            <p className="mt-1 text-sm font-semibold text-gray-800">
+              {rankIcon(rank)} {rank}
+            </p>
+          )}
+
           <p className="mt-1 text-sm text-gray-600">
             {xp} XP • Next: {nextLevelXp} XP
           </p>
