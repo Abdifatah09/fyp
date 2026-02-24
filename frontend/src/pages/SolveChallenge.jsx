@@ -106,6 +106,15 @@ export default function SolveChallenge() {
         message: `${a.name} (+${a.xpReward || 0} XP)`,
       });
     }
+
+    // Badge toasts
+    const newBadges = res?.badges?.newlyEarned || [];
+    for (const b of newBadges) {
+      pushToast({
+        title: "Badge Unlocked 🎖️",
+       message: `${b.name} (+${b.xpReward || 0} XP)`,
+      });
+    }
     
     // Rank up toast
     if (res?.rank?.rankUp) {

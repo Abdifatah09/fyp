@@ -2,11 +2,7 @@
 
 const { Challenge, ChallengeAttempt, UserStats } = require("../models");
 const { createSubmission } = require("../utils/judge0Service");
-const {
-  applyLevelUps,
-  toISODateOnly,
-  yesterdayISO,
-} = require("../utils/gamification");
+const { applyLevelUps, toISODateOnly, yesterdayISO } = require("../utils/gamification");
 const { applyRank } = require("../utils/rank");
 
 const { checkAndAwardAchievements } = require("../utils/achievementService");
@@ -16,16 +12,14 @@ function normalize(s) {
   return String(s ?? "").replace(/\r\n/g, "\n").trim();
 }
 
-// Fixes double-escaped strings coming from DB/admin UI (e.g. "\\n", '\\"')
 function decodeEscapes(s) {
   return String(s ?? "")
-    .replace(/\\n/g, "\n") // literal \n -> newline
-    .replace(/\\r/g, "\r") // literal \r -> carriage return
-    .replace(/\\"/g, '"') // \" -> "
-    .replace(/\\\\/g, "\\"); // \\ -> \
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "\r")
+    .replace(/\\"/g, '"')
+    .replace(/\\\\/g, "\\");
 }
 
-// If solution accidentally stored as a quoted string: "console.log(...)"
 function stripWrappingQuotes(s) {
   const t = String(s ?? "").trim();
   if (
@@ -40,19 +34,14 @@ function stripWrappingQuotes(s) {
 exports.submit = async (req, res) => {
   try {
     const userId = req.user.userId;
-
-    // frontend sends: challengeId, sourceCode, stdin(optional)
     const { challengeId, sourceCode, stdin = "" } = req.body;
 
     if (!challengeId || !sourceCode) {
-      return res.status(400).json({
-        message: "challengeId and sourceCode are required",
-      });
+      return res.status(400).json({ message: "challengeId and sourceCode are required" });
     }
 
     const challenge = await Challenge.findByPk(challengeId);
-    if (!challenge)
-      return res.status(404).json({ message: "Challenge not found" });
+    if (!challenge) return res.status(404).json({ message: "Challenge not found" });
 
     if (!challenge.solution) {
       return res.status(400).json({
@@ -67,36 +56,18 @@ exports.submit = async (req, res) => {
       });
     }
 
-    // Decode any accidental escaping in stored fields
     const decodedStarter = decodeEscapes(challenge.starterCode || "");
-    const decodedSolution = stripWrappingQuotes(
-      decodeEscapes(challenge.solution || "")
-    );
-
-    // IMPORTANT: run starter + solution so oracle has the scaffold variables etc.
+    const decodedSolution = stripWrappingQuotes(decodeEscapes(challenge.solution || ""));
     const oracleSource = `${decodedStarter}\n${decodedSolution}`;
 
-    // 1) Run user's code
-    const userRun = await createSubmission({
-      languageId,
-      sourceCode,
-      stdin,
-    });
+    // Run user code
+    const userRun = await createSubmission({ languageId, sourceCode, stdin });
+    const userOk = userRun?.status?.id === 3;
 
-    const userStatusId = userRun?.status?.id;
-    const userOk = userStatusId === 3; // Accepted
+    // Run oracle solution
+    const solRun = await createSubmission({ languageId, sourceCode: oracleSource, stdin });
+    const solOk = solRun?.status?.id === 3;
 
-    // 2) Run stored solution as oracle
-    const solRun = await createSubmission({
-      languageId,
-      sourceCode: oracleSource,
-      stdin,
-    });
-
-    const solStatusId = solRun?.status?.id;
-    const solOk = solStatusId === 3;
-
-    // If the solution fails, we can't grade reliably.
     if (!solOk) {
       const feedback =
         "Grading unavailable: stored solution failed to run. Please contact admin.";
@@ -116,6 +87,9 @@ exports.submit = async (req, res) => {
         feedback: attempt.feedback,
         attempt,
         expectedOutput: solRun.stdout || "",
+        achievements: { newlyEarned: [], xpFromAchievements: 0 },
+        badges: { newlyEarned: [], xpFromBadges: 0 },
+        rank: { current: "Bronze", rankUp: false },
         run: {
           status: userRun.status,
           stdout: userRun.stdout,
@@ -124,26 +98,13 @@ exports.submit = async (req, res) => {
           time: userRun.time,
           memory: userRun.memory,
         },
-        // keep this for debugging in frontend; remove later if you want
-        solutionRun: {
-          status: solRun.status,
-          stdout: solRun.stdout,
-          stderr: solRun.stderr,
-          compile_output: solRun.compile_output,
-        },
-        // keep shape consistent
-        achievements: { newlyEarned: [], xpFromAchievements: 0 },
-        badges: { newlyEarned: [], xpFromBadges: 0 },
       });
     }
 
-    // Compare outputs (stdout)
     const expectedOutput = normalize(solRun.stdout);
     const actualOutput = normalize(userRun.stdout);
-
     const isCorrect = userOk && actualOutput === expectedOutput;
 
-    // feedback
     let feedback = isCorrect ? "Correct ✅" : "Incorrect ❌";
 
     if (!userOk) {
@@ -159,7 +120,15 @@ exports.submit = async (req, res) => {
       }`;
     }
 
-    // 3) Save attempt
+    // ✅ FIX: check prevCorrect BEFORE saving this attempt
+    let prevCorrect = null;
+    if (isCorrect) {
+      prevCorrect = await ChallengeAttempt.findOne({
+        where: { userId, challengeId, isCorrect: true },
+      });
+    }
+
+    // Save attempt
     const attempt = await ChallengeAttempt.create({
       userId,
       challengeId,
@@ -169,13 +138,12 @@ exports.submit = async (req, res) => {
       feedback,
     });
 
-    // 4) Core gamification: XP + Level + Streak
+    // Stats
     let stats = await UserStats.findOne({ where: { userId } });
     if (!stats) stats = await UserStats.create({ userId });
 
     const today = toISODateOnly(new Date());
 
-    // streak logic
     if (!stats.lastActiveDate) {
       stats.streakCount = 1;
       stats.lastActiveDate = today;
@@ -189,41 +157,28 @@ exports.submit = async (req, res) => {
       stats.lastActiveDate = today;
     }
 
-    // XP only if correct
     let xpGained = 0;
-
     if (isCorrect) {
-      // first-correct bonus: if they haven't already passed this challenge before
-      const prevCorrect = await ChallengeAttempt.findOne({
-        where: { userId, challengeId, isCorrect: true },
-      });
-
-      xpGained = prevCorrect ? 10 : 20;
+      xpGained = prevCorrect ? 10 : 20; // ✅ now first correct gives 20
       stats.xp += xpGained;
     }
 
     const leveled = applyLevelUps({ xp: stats.xp, level: stats.level });
     stats.level = leveled.level;
-
     await stats.save();
 
-    // Achievements (existing)
+    // Awards
     const ach = await checkAndAwardAchievements(userId);
-
-    // Badges (new)
     const badgeResult = await checkAndAwardBadges(userId);
 
-    // If achievements/badges added XP, your level might change again:
+    // Level might change after rewards
     const leveled2 = applyLevelUps({ xp: stats.xp, level: stats.level });
     stats.level = leveled2.level;
-    await stats.save();
 
-    // ✅ Apply Rank after XP changes (including achievements/badges XP)
     const prevRank = stats.rank || "Bronze";
     applyRank(stats);
     await stats.save();
 
-    // 5) Return everything the frontend needs
     return res.status(201).json({
       gradable: true,
       isCorrect,
@@ -235,7 +190,7 @@ exports.submit = async (req, res) => {
         level: stats.level,
         streakCount: stats.streakCount,
         lastActiveDate: stats.lastActiveDate,
-        nextLevelXp: leveled.nextLevelXp,
+        nextLevelXp: leveled2.nextLevelXp,
         rank: stats.rank,
       },
       expectedOutput: solRun.stdout || "",
