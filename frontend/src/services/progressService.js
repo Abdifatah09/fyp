@@ -16,4 +16,6 @@ export const progressService = {
   getSubjectsProgress: () => api.get("/progress/me/subjects").then((res) => res.data),
 
   getSubjectDetail: (subjectId) => api.get(`/progress/me/subjects/${subjectId}`).then((res) => res.data),
+
+  getMyCompletedChallengeIds: () => api.get("/progress/me/completed-challenges").then((res) => res.data),
 };

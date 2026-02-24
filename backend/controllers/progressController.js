@@ -552,3 +552,20 @@ exports.getSubjectDetail = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
+exports.getMyCompletedChallengeIds = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const attempts = await getUserAttempts(userId);
+    const completedSet = buildCompletedChallengeSet(attempts);
+
+    return res.json({
+      completedChallengeIds: Array.from(completedSet),
+      completedChallenges: completedSet.size,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};

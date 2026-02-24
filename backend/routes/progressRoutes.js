@@ -15,5 +15,6 @@ router.get("/me/difficulties/:difficultyId", requireAuth, progressController.get
 router.get("/me/subjects", requireAuth, progressController.getProgressBySubject);
 router.get("/me/subjects/:subjectId", requireAuth, progressController.getSubjectDetail);
 
+router.get("/me/completed-challenges", requireAuth, progressController.getMyCompletedChallengeIds);
 
 module.exports = router;

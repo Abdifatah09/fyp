@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { sectionService } from "../services/sectionService";
 import { challengeService } from "../services/challengeService";
 import { difficultyService } from "../services/difficultyService";
+import { progressService } from "../services/progressService";
 
 export default function DifficultyChallenges() {
   const { difficultyId } = useParams();
@@ -11,6 +12,12 @@ export default function DifficultyChallenges() {
   const [difficulty, setDifficulty] = useState(null);
   const [sections, setSections] = useState([]);
   const [challenges, setChallenges] = useState([]);
+
+  const [completedIds, setCompletedIds] = useState([]);
+  const completedSet = useMemo(
+    () => new Set((completedIds || []).map((x) => String(x))),
+    [completedIds]
+  );
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -31,10 +38,13 @@ export default function DifficultyChallenges() {
           }
         } catch {}
 
-        const [allSections, allChallenges] = await Promise.all([
+        const [allSections, allChallenges, completed] = await Promise.all([
           sectionService.getAll(),
           challengeService.getAll(),
+          progressService.getMyCompletedChallengeIds(), // <-- new
         ]);
+
+        setCompletedIds(completed?.completedChallengeIds || []);
 
         const secs = (allSections || [])
           .filter((s) => String(s.difficultyId) === String(difficultyId))
@@ -51,7 +61,7 @@ export default function DifficultyChallenges() {
 
         setChallenges(chals);
       } catch (e) {
-        setErr("Failed to load challenges for this difficulty");
+        setErr(e?.response?.data?.message || "Failed to load challenges for this difficulty");
       } finally {
         setLoading(false);
       }
@@ -103,13 +113,30 @@ export default function DifficultyChallenges() {
         <div className="space-y-6">
           {sections.map((sec) => {
             const list = challengesBySection.get(String(sec.id)) || [];
+
+            // section progress using completedSet
+            const total = list.length;
+            const done = list.filter((c) => completedSet.has(String(c.id))).length;
+            const percent = total === 0 ? 0 : Math.round((done / total) * 100);
+
             return (
-              <div key={sec.id} className="rounded-xl border p-5">
-                <div className="flex items-center justify-between gap-3">
+              <div key={sec.id} className="rounded-xl border p-5 bg-white">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-xs uppercase tracking-wide text-gray-500">Section</p>
                     <h2 className="text-lg font-semibold">{sec.title}</h2>
+
+                    {/* Section progress */}
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center rounded-full border bg-gray-50 px-2 py-0.5 text-xs font-semibold text-gray-700">
+                        {done}/{total} completed
+                      </span>
+                      <span className="inline-flex items-center rounded-full border bg-gray-50 px-2 py-0.5 text-xs font-semibold text-gray-700">
+                        {percent}%
+                      </span>
+                    </div>
                   </div>
+
                   <span className="text-sm text-gray-600">{list.length} challenges</span>
                 </div>
 
@@ -117,20 +144,50 @@ export default function DifficultyChallenges() {
                   <p className="mt-4 text-sm text-gray-600">No challenges in this section yet.</p>
                 ) : (
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {list.map((c) => (
-                      <button
-                        key={c.id}
-                        onClick={() => navigate(`/challenges/${c.id}/solve`)}
-                        className="text-left rounded-xl border p-4 hover:border-gray-400 transition"
-                      >
-                        <p className="text-xs uppercase tracking-wide text-gray-500">Challenge</p>
-                        <h3 className="text-base font-semibold">{c.title}</h3>
-                        <p className="mt-2 text-sm text-gray-600 line-clamp-3">
-                          {c.description}
-                        </p>
-                        <p className="mt-4 text-sm font-semibold text-blue-600">Open editor →</p>
-                      </button>
-                    ))}
+                    {list.map((c) => {
+                      const isCompleted = completedSet.has(String(c.id));
+
+                      return (
+                        <button
+                          key={c.id}
+                          onClick={() => navigate(`/challenges/${c.id}/solve`)}
+                          className={`relative text-left rounded-xl border p-4 transition ${
+                            isCompleted
+                              ? "border-green-200 bg-green-50 hover:border-green-300"
+                              : "hover:border-gray-400 bg-white"
+                          }`}
+                        >
+                          {/* top-right marker */}
+                          {isCompleted && (
+                            <span className="absolute top-3 right-3 inline-flex items-center rounded-full border border-green-200 bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+                              ✅ Completed
+                            </span>
+                          )}
+
+                          <p className="text-xs uppercase tracking-wide text-gray-500">Challenge</p>
+                          <h3 className="text-base font-semibold">{c.title}</h3>
+                          <p className="mt-2 text-sm text-gray-600 line-clamp-3">
+                            {c.description}
+                          </p>
+
+                          <div className="mt-4 flex items-center justify-between">
+                            <p className="text-sm font-semibold text-blue-600">
+                              Open editor →
+                            </p>
+
+                            {!isCompleted ? (
+                              <span className="text-xs font-semibold text-gray-500">
+                                Not done
+                              </span>
+                            ) : (
+                              <span className="text-xs font-semibold text-green-700">
+                                Done
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
