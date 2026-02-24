@@ -1,7 +1,7 @@
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { User, Profile, RefreshToken } = require('../models');
-const { sendOtpEmail } = require("../utils/emailService");
+const { sendOtpEmail, sendWelcomeEmail } = require("../utils/emailService");
 const {
   generateAccessToken,
   generateRefreshToken,
@@ -230,7 +230,7 @@ exports.forgotPassword = async (req, res) => {
    let emailSent = true;
 
     try {
-      await sendOtpEmail(user.email, code, "VERIFY_EMAIL");
+      await sendOtpEmail(user.email, code, "RESET_PASSWORD");
     } catch (emailErr) {
       emailSent = false;
       console.error("OTP email failed:", emailErr.message);
@@ -323,6 +323,12 @@ exports.verifyEmailCode = async (req, res) => {
       emailVerificationCodeHash: null,
       emailVerificationExpiresAt: null,
     });
+
+    try {
+     await sendWelcomeEmail(user.email, user.name);
+    } catch (emailErr) {
+      console.error("Welcome email failed:", emailErr.message);
+    }
 
     return res.json({ message: "Email verified successfully. You can now login." });
   } catch (err) {

@@ -29,4 +29,29 @@ async function sendOtpEmail(to, code, purpose = "VERIFY_EMAIL") {
   });
 }
 
-module.exports = { sendOtpEmail };
+async function sendWelcomeEmail(to, name = "") {
+  const safeName = String(name || "").trim();
+  const subject = "Welcome to the platform 🎉";
+
+  const text = [
+    safeName ? `Hi ${safeName},` : "Hi,",
+    "",
+    "Welcome! Your email is verified and your account is ready.",
+    "",
+    "Next steps:",
+    "• Go to your dashboard",
+    "• Pick a subject and start your first challenge",
+    "• Earn XP, badges, and achievements as you progress",
+    "",
+    "Good luck — and have fun coding!",
+  ].join("\n");
+
+  return transporter.sendMail({
+    from: process.env.EMAIL_FROM,
+    to,
+    subject,
+    text,
+  });
+}
+
+module.exports = { sendOtpEmail, sendWelcomeEmail };
