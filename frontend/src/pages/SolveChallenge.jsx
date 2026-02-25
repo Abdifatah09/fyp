@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import Editor from "@monaco-editor/react";
 import { challengeService } from "../services/challengeService";
 import { judgeService } from "../services/judgeService";
+import { useAuth } from "../context/AuthContext";
 
 const normalize = (s) => String(s ?? "").replace(/\r\n/g, "\n").trim();
 
@@ -23,6 +24,8 @@ function languageLabel(languageId) {
 export default function SolveChallenge() {
   const { id } = useParams(); // challengeId
   const navigate = useNavigate();
+
+  const { updateStats } = useAuth();
 
   const [challenge, setChallenge] = useState(null);
   const [code, setCode] = useState("");
@@ -99,6 +102,9 @@ export default function SolveChallenge() {
 
       setResult(res);
 
+      
+      if (res?.stats) updateStats(res.stats);
+      
       const newly = res?.achievements?.newlyEarned || [];
         for (const a of newly) {
         pushToast({

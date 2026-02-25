@@ -1,10 +1,30 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { subjectService } from "../services/subjectService";
 import { difficultyService } from "../services/difficultyService";
 import { sectionService } from "../services/sectionService";
 import { useAuth } from "../context/AuthContext";
+import { motion } from "framer-motion";
 import logo from "../assets/logo.png";
+
+const page = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { duration: 0.25 } },
+};
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 14 },
+  show: (i = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.45, delay: 0.08 * i, ease: "easeOut" },
+  }),
+};
+
+const inViewFadeUp = {
+  hidden: { opacity: 0, y: 14 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" } },
+};
 
 export default function Home() {
   const navigate = useNavigate();
@@ -40,12 +60,14 @@ export default function Home() {
     })();
   }, []);
 
-  const subjectDifficulties = difficulties.filter(
-    (d) => d.subjectId === activeSubject?.id
+  const subjectDifficulties = useMemo(
+    () => difficulties.filter((d) => d.subjectId === activeSubject?.id),
+    [difficulties, activeSubject]
   );
 
-  const difficultySections = sections.filter(
-    (s) => s.difficultyId === activeDifficulty?.id
+  const difficultySections = useMemo(
+    () => sections.filter((s) => s.difficultyId === activeDifficulty?.id),
+    [sections, activeDifficulty]
   );
 
   if (loading) {
@@ -57,108 +79,184 @@ export default function Home() {
   }
 
   return (
-    <div className="space-y-16 pb-24">
-          {/* HERO */}
+    <motion.div
+      variants={page}
+      initial="hidden"
+      animate="show"
+      className="space-y-16 pb-24"
+    >
+      {/* HERO */}
       <section className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
         <div className="max-w-6xl mx-auto px-6 py-20">
           <div className="grid items-center gap-10 lg:grid-cols-2">
             {/* Left: Text */}
             <div>
-              <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">
+              <motion.h1
+                variants={fadeUp}
+                initial="hidden"
+                animate="show"
+                custom={0}
+                className="text-4xl sm:text-5xl font-bold tracking-tight"
+              >
                 Learn to Code.<br />
                 <span className="text-blue-400">One Path at a Time.</span>
-              </h1>
+              </motion.h1>
 
-              <p className="mt-6 max-w-xl text-white/80 text-lg">
+              <motion.p
+                variants={fadeUp}
+                initial="hidden"
+                animate="show"
+                custom={1}
+                className="mt-6 max-w-xl text-white/80 text-lg"
+              >
                 HackPath guides you through structured coding challenges — from
                 fundamentals to advanced concepts — with clear progress tracking.
-              </p>
+              </motion.p>
 
-              <div className="mt-8 flex flex-wrap gap-4 justify-center sm:justify-start">
+              <motion.div
+                variants={fadeUp}
+                initial="hidden"
+                animate="show"
+                custom={2}
+                className="mt-8 flex flex-wrap gap-4 justify-center sm:justify-start"
+              >
                 {user ? (
-                  <button
+                  <motion.button
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => navigate("/dashboard")}
                     className="rounded-lg bg-blue-600 px-6 py-3 font-semibold hover:bg-blue-700 transition"
                   >
                     Go to Dashboard
-                  </button>
+                  </motion.button>
                 ) : (
                   <>
-                    <button
+                    <motion.button
+                      whileHover={{ y: -2 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => navigate("/register")}
                       className="rounded-lg bg-blue-600 px-6 py-3 font-semibold hover:bg-blue-700 transition"
                     >
                       Get Started
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ y: -2 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => navigate("/login")}
                       className="rounded-lg border border-white/20 px-6 py-3 font-semibold hover:bg-white/10 transition"
                     >
                       Log In
-                    </button>
+                    </motion.button>
                   </>
                 )}
-              </div>
+              </motion.div>
             </div>
 
             {/* Right: Image */}
-            <div className="flex justify-center lg:justify-end">
-               <div className="relative w-full max-w-lg">
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              animate="show"
+              custom={3}
+              className="flex justify-center lg:justify-end"
+            >
+              <div className="relative w-full max-w-lg">
                 {/* glow */}
-                <div className="absolute -inset-5 rounded-3xl bg-blue-500/20 blur-3xl" />
-                  <img
-                    src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=900&fit=crop"
-                    // src= {logo}
-                    alt="Gamified Coding Platform"
-                    className="relative w-full rounded-3xl border border-white/10 shadow-2xl object-cover aspect-[4/3]"
-                    loading="lazy"
-                  />
-                </div>
+                <motion.div
+                  aria-hidden
+                  className="absolute -inset-5 rounded-3xl bg-blue-500/20 blur-3xl"
+                  animate={{ opacity: [0.45, 0.75, 0.45] }}
+                  transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
+                />
+                <motion.img
+                  src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=900&fit=crop"
+                  // src= {logo}
+                  alt="Gamified Coding Platform"
+                  className="relative w-full rounded-3xl border border-white/10 shadow-2xl object-cover aspect-[4/3]"
+                  loading="lazy"
+                  whileHover={{ scale: 1.01 }}
+                  transition={{ duration: 0.2 }}
+                />
               </div>
-            </div>
+            </motion.div>
           </div>
+        </div>
       </section>
 
-
       {/* SUBJECTS */}
-      <section className="max-w-6xl mx-auto px-6 space-y-6">
-        <h2 className="text-2xl font-bold">Choose a Subject</h2>
+      <motion.section
+        variants={inViewFadeUp}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: true, amount: 0.2 }}
+        className="max-w-6xl mx-auto px-6 space-y-6"
+      >
+        <div>
+          <h2 className="text-2xl font-bold">Choose a Subject</h2>
+          <p className="mt-2 text-gray-600">
+            Select a subject to see its difficulty levels.
+          </p>
+        </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {subjects.map((s) => (
-            <button
+          {subjects.map((s, i) => (
+            <motion.button
               key={s.id}
               onClick={() => {
                 setActiveSubject(s);
                 setActiveDifficulty(null);
               }}
+              whileHover={{ y: -3 }}
+              whileTap={{ scale: 0.99 }}
+              transition={{ duration: 0.15 }}
               className={`rounded-xl border p-6 text-left transition ${
                 activeSubject?.id === s.id
                   ? "border-blue-600 ring-1 ring-blue-600"
                   : "hover:border-gray-300"
               }`}
             >
-              <h3 className="font-semibold text-lg">{s.name}</h3>
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="font-semibold text-lg">{s.name}</h3>
+                {activeSubject?.id === s.id && (
+                  <span className="shrink-0 inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                    Selected
+                  </span>
+                )}
+              </div>
               <p className="mt-2 text-sm text-gray-600">
                 {s.description || "Explore this subject"}
               </p>
-            </button>
+            </motion.button>
           ))}
         </div>
-      </section>
+      </motion.section>
 
       {/* DIFFICULTIES */}
       {activeSubject && (
-        <section className="max-w-6xl mx-auto px-6 space-y-6">
-          <h2 className="text-2xl font-bold">
-            Difficulty Levels — {activeSubject.name}
-          </h2>
+        <motion.section
+          variants={inViewFadeUp}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          className="max-w-6xl mx-auto px-6 space-y-6"
+        >
+          <div>
+            <h2 className="text-2xl font-bold">
+              Difficulty Levels — {activeSubject.name}
+            </h2>
+            <p className="mt-2 text-gray-600">
+              Pick a difficulty to reveal the sections inside this path.
+            </p>
+          </div>
 
           <div className="flex flex-wrap gap-4">
             {subjectDifficulties.map((d) => (
-              <button
+              <motion.button
                 key={d.id}
                 onClick={() => setActiveDifficulty(d)}
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ duration: 0.15 }}
                 className={`rounded-lg px-5 py-3 border font-medium transition ${
                   activeDifficulty?.id === d.id
                     ? "bg-blue-600 text-white border-blue-600"
@@ -166,24 +264,37 @@ export default function Home() {
                 }`}
               >
                 {d.name}
-              </button>
+              </motion.button>
             ))}
           </div>
-        </section>
+        </motion.section>
       )}
 
       {/* SECTIONS */}
       {activeDifficulty && (
-        <section className="max-w-6xl mx-auto px-6 space-y-6">
-          <h2 className="text-2xl font-bold">
-            What You’ll Learn — {activeDifficulty.name}
-          </h2>
+        <motion.section
+          variants={inViewFadeUp}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          className="max-w-6xl mx-auto px-6 space-y-6"
+        >
+          <div>
+            <h2 className="text-2xl font-bold">
+              What You’ll Learn — {activeDifficulty.name}
+            </h2>
+            <p className="mt-2 text-gray-600">
+              Each section contains multiple challenges to complete.
+            </p>
+          </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {difficultySections.map((sec) => (
-              <div
+              <motion.div
                 key={sec.id}
-                className="rounded-xl border p-6 flex flex-col justify-between"
+                whileHover={{ y: -3 }}
+                transition={{ duration: 0.15 }}
+                className="rounded-xl border p-6 flex flex-col justify-between bg-white"
               >
                 <div>
                   <h3 className="font-semibold">{sec.title}</h3>
@@ -192,7 +303,8 @@ export default function Home() {
                   </p>
                 </div>
 
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => {
                     if (!user) {
                       navigate("/login");
@@ -200,34 +312,42 @@ export default function Home() {
                       navigate(`/progress/sections/${sec.id}`);
                     }
                   }}
-                  className="mt-6 text-sm font-semibold text-blue-600 hover:underline"
+                  className="mt-6 text-left text-sm font-semibold text-blue-600 hover:underline"
                 >
                   {user ? "View Section" : "Log in to start"}
-                </button>
-              </div>
+                </motion.button>
+              </motion.div>
             ))}
           </div>
-        </section>
+        </motion.section>
       )}
 
       {/* FOOTER CTA */}
       {!user && (
-        <section className="bg-gray-50 border-t">
+        <motion.section
+          initial={{ opacity: 0, y: 14 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
+          className="bg-gray-50 border-t"
+        >
           <div className="max-w-6xl mx-auto px-6 py-16 text-center">
             <h2 className="text-3xl font-bold">Ready to start learning?</h2>
             <p className="mt-4 text-gray-600">
               Create an account to track progress, complete challenges, and
               unlock your learning path.
             </p>
-            <button
+            <motion.button
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => navigate("/register")}
               className="mt-6 rounded-lg bg-blue-600 px-8 py-3 font-semibold text-white hover:bg-blue-700 transition"
             >
               Create Account
-            </button>
+            </motion.button>
           </div>
-        </section>
+        </motion.section>
       )}
-    </div>
+    </motion.div>
   );
 }

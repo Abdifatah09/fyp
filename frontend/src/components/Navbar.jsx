@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import logo from "../assets/logo.png";
-import { gamificationService } from "../services/gamificationService";
 
 function rankIcon(rank) {
   const r = String(rank || "").toLowerCase();
@@ -18,36 +17,9 @@ function rankIcon(rank) {
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isReady, logout } = useAuth();
+  const { user, stats, isReady, logout } = useAuth(); // ✅ stats from context
 
   const isAuthed = Boolean(user);
-
-  // ✅ gamification stats for rank chip
-  const [stats, setStats] = useState(null);
-
-  useEffect(() => {
-    let alive = true;
-
-    (async () => {
-      try {
-        if (!isReady || !isAuthed) {
-          if (alive) setStats(null);
-          return;
-        }
-        const data = await gamificationService.me();
-        // supports either {stats:{...}} or direct
-        const normalized = data?.stats || data || null;
-        if (alive) setStats(normalized);
-      } catch {
-        // don’t break navbar if this fails
-        if (alive) setStats(null);
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, [isReady, isAuthed]);
 
   const linkClass = ({ isActive }) =>
     `text-sm font-medium transition ${
@@ -100,7 +72,7 @@ export default function Navbar() {
                     </NavLink>
                   </nav>
 
-                  {/* ✅ Rank chip */}
+                  {/* ✅ Rank chip (now live from context) */}
                   <button
                     type="button"
                     onClick={() => navigate("/achievements")}

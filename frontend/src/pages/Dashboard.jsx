@@ -13,6 +13,32 @@ import LevelCard from "../components/LevelCard";
 import StreakCard from "../components/StreakCard";
 import LeaderboardPreview from "../components/LeaderboardPreview";
 
+import { motion, AnimatePresence } from "framer-motion";
+
+const page = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { duration: 0.25 } },
+};
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 14 },
+  show: (i = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.45, delay: 0.06 * i, ease: "easeOut" },
+  }),
+};
+
+const listStagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.06 } },
+};
+
+const itemFade = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: "easeOut" } },
+};
+
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -31,9 +57,6 @@ export default function Dashboard() {
   const [err, setErr] = useState("");
 
   const subscribedDifficultyIds = useMemo(() => {
-    // supports either API response:
-    // - join rows: sub.Difficulty.id
-    // - direct difficulties: sub.id
     return new Set(subs.map((s) => String(s?.Difficulty?.id || s?.id)));
   }, [subs]);
 
@@ -49,28 +72,20 @@ export default function Dashboard() {
       setErr("");
       setLoading(true);
 
-      const [
-        subsData,
-        subjectsData,
-        diffsData,
-        statsData,
-        lbData,
-      ] = await Promise.all([
-        subscriptionService.mine(),
-        subjectService.getAll(),
-        difficultyService.getAll(),
-        gamificationService.me(),
-        leaderboardService.global(5),
-      ]);
+      const [subsData, subjectsData, diffsData, statsData, lbData] =
+        await Promise.all([
+          subscriptionService.mine(),
+          subjectService.getAll(),
+          difficultyService.getAll(),
+          gamificationService.me(),
+          leaderboardService.global(5),
+        ]);
 
       setSubs(subsData || []);
       setSubjects(subjectsData || []);
       setDifficulties(diffsData || []);
       setStats(statsData || null);
       setLeaderboard(lbData || []);
-
-      console.log("statsData:", statsData);
-
 
       // auto pick first subject (only if none selected)
       const firstSubj = (subjectsData || [])[0];
@@ -114,7 +129,7 @@ export default function Dashboard() {
     }
   };
 
-    const rankMeta = useMemo(() => {
+  const rankMeta = useMemo(() => {
     const r = stats?.rank || "Bronze";
     const map = {
       Bronze: { icon: "🥉", cls: "bg-amber-50 text-amber-800 border-amber-200" },
@@ -124,67 +139,131 @@ export default function Dashboard() {
       Diamond: { icon: "🔥", cls: "bg-rose-50 text-rose-800 border-rose-200" },
       Master: { icon: "👑", cls: "bg-purple-50 text-purple-800 border-purple-200" },
     };
-  return map[r] || { icon: "🏷️", cls: "bg-gray-50 text-gray-800 border-gray-200" };
+    return map[r] || { icon: "🏷️", cls: "bg-gray-50 text-gray-800 border-gray-200" };
   }, [stats?.rank]);
-
 
   if (loading) {
     return <div className="p-6 text-gray-600">Loading dashboard...</div>;
   }
 
   return (
-    <div className="p-6 space-y-10">
+    <motion.div
+      variants={page}
+      initial="hidden"
+      animate="show"
+      className="p-6 space-y-10"
+    >
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="mt-2">Welcome {user?.name || user?.email} 👋</p>
-        {err && <p className="mt-2 text-red-600">{err}</p>}
-      </div>
-      {stats?.rank && (
-        <div className={`mt-3 inline-flex items-center gap-2 rounded-full border px-4 py-2 ${rankMeta.cls}`}>
-          <span className="text-lg leading-none">{rankMeta.icon}</span>
-          <span className="text-sm font-semibold">Rank:</span>
-          <span className="text-sm font-bold">{stats.rank}</span>
-          <span className="text-xs opacity-80">• Level {stats.level} • {stats.xp} XP</span>
-        </div>
-      )}
+        <motion.h1 variants={fadeUp} custom={0} initial="hidden" animate="show" className="text-2xl font-semibold">
+          Dashboard
+        </motion.h1>
 
+        <motion.p variants={fadeUp} custom={1} initial="hidden" animate="show" className="mt-2">
+          Welcome {user?.name || user?.email} 👋
+        </motion.p>
+
+        <AnimatePresence>
+          {err && (
+            <motion.p
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.2 }}
+              className="mt-2 text-red-600"
+            >
+              {err}
+            </motion.p>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {stats?.rank && (
+            <motion.div
+              key={stats.rank}
+              initial={{ opacity: 0, y: 10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className={`mt-3 inline-flex items-center gap-2 rounded-full border px-4 py-2 ${rankMeta.cls}`}
+            >
+              <span className="text-lg leading-none">{rankMeta.icon}</span>
+              <span className="text-sm font-semibold">Rank:</span>
+              <span className="text-sm font-bold">{stats.rank}</span>
+              <span className="text-xs opacity-80">
+                • Level {stats.level} • {stats.xp} XP
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* Gamification Cards */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <LevelCard stats={stats} />
-        <StreakCard stats={stats} />
-        <LeaderboardPreview rows={leaderboard} />
-      </section>
+      <motion.section
+        variants={listStagger}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-1 md:grid-cols-3 gap-4"
+      >
+        <motion.div variants={itemFade} whileHover={{ y: -2 }} transition={{ duration: 0.15 }}>
+          <LevelCard stats={stats} />
+        </motion.div>
+
+        <motion.div variants={itemFade} whileHover={{ y: -2 }} transition={{ duration: 0.15 }}>
+          <StreakCard stats={stats} />
+        </motion.div>
+
+        <motion.div variants={itemFade} whileHover={{ y: -2 }} transition={{ duration: 0.15 }}>
+          <LeaderboardPreview rows={leaderboard} />
+        </motion.div>
+      </motion.section>
 
       {/* My Subscriptions */}
       <section className="space-y-4">
         <div className="flex items-end justify-between gap-4">
-          <h2 className="text-xl font-semibold">My Subscriptions</h2>
-          <button
+          <motion.h2 variants={fadeUp} custom={2} initial="hidden" animate="show" className="text-xl font-semibold">
+            My Subscriptions
+          </motion.h2>
+
+          <motion.button
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.98 }}
             onClick={loadEverything}
             className="text-sm font-semibold text-blue-600 hover:underline"
           >
             Refresh
-          </button>
+          </motion.button>
         </div>
 
         {subs.length === 0 ? (
-          <div className="rounded-xl border p-5 bg-white">
+          <motion.div
+            variants={itemFade}
+            initial="hidden"
+            animate="show"
+            className="rounded-xl border p-5 bg-white"
+          >
             <p className="font-medium">No subscriptions yet</p>
             <p className="text-sm text-gray-600 mt-1">
               Subscribe to a difficulty below and it will show up here.
             </p>
-          </div>
+          </motion.div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <motion.div
+            variants={listStagger}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+          >
             {subs.map((sub) => {
               const difficulty = sub.Difficulty || sub;
               const subject = difficulty?.subject;
 
               return (
-                <div
+                <motion.div
                   key={sub.id || difficulty.id}
+                  variants={itemFade}
+                  whileHover={{ y: -3 }}
+                  transition={{ duration: 0.15 }}
                   className="border rounded-xl p-5 bg-white"
                 >
                   <p className="text-xs uppercase tracking-wide text-gray-500">
@@ -193,37 +272,43 @@ export default function Dashboard() {
                   <h3 className="text-lg font-semibold">{difficulty?.name}</h3>
 
                   <div className="mt-4 flex gap-3">
-                    <button
+                    <motion.button
+                      whileTap={{ scale: 0.98 }}
                       onClick={() =>
                         navigate(`/my-path/difficulty/${difficulty.id}`)
                       }
                       className="rounded-lg bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700 transition"
                     >
                       Continue
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => handleUnsubscribe(difficulty.id)}
                       className="rounded-lg border px-4 py-2 text-sm font-semibold hover:bg-gray-50 transition"
                     >
                       Unsubscribe
-                    </button>
+                    </motion.button>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         )}
       </section>
 
       {/* Browse & Subscribe */}
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold">Browse & Subscribe</h2>
+        <motion.h2 variants={fadeUp} custom={3} initial="hidden" animate="show" className="text-xl font-semibold">
+          Browse & Subscribe
+        </motion.h2>
 
         {/* Subject picker */}
         <div className="flex flex-wrap gap-3">
           {subjects.map((s) => (
-            <button
+            <motion.button
               key={s.id}
+              whileHover={{ y: -1 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => setActiveSubjectId(s.id)}
               className={`rounded-lg px-4 py-2 border font-semibold transition ${
                 String(activeSubjectId) === String(s.id)
@@ -232,17 +317,28 @@ export default function Dashboard() {
               }`}
             >
               {s.name}
-            </button>
+            </motion.button>
           ))}
         </div>
 
         {/* Difficulties for selected subject */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <motion.div
+          variants={listStagger}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+        >
           {difficultiesForActiveSubject.map((d) => {
             const isSubbed = subscribedDifficultyIds.has(String(d.id));
 
             return (
-              <div key={d.id} className="border rounded-xl p-5 bg-white">
+              <motion.div
+                key={d.id}
+                variants={itemFade}
+                whileHover={{ y: -3 }}
+                transition={{ duration: 0.15 }}
+                className="border rounded-xl p-5 bg-white"
+              >
                 <p className="text-xs uppercase tracking-wide text-gray-500">
                   Difficulty
                 </p>
@@ -251,35 +347,36 @@ export default function Dashboard() {
                 <div className="mt-4 flex gap-3">
                   {isSubbed ? (
                     <>
-                      <button
-                        onClick={() =>
-                          navigate(`/my-path/difficulty/${d.id}`)
-                        }
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => navigate(`/my-path/difficulty/${d.id}`)}
                         className="rounded-lg bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700 transition"
                       >
                         Open
-                      </button>
-                      <button
+                      </motion.button>
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => handleUnsubscribe(d.id)}
                         className="rounded-lg border px-4 py-2 text-sm font-semibold hover:bg-gray-50 transition"
                       >
                         Unsubscribe
-                      </button>
+                      </motion.button>
                     </>
                   ) : (
-                    <button
+                    <motion.button
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => handleSubscribe(d.id)}
                       className="rounded-lg bg-green-600 px-4 py-2 text-white text-sm font-semibold hover:bg-green-700 transition"
                     >
                       Subscribe
-                    </button>
+                    </motion.button>
                   )}
                 </div>
-              </div>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       </section>
-    </div>
+    </motion.div>
   );
 }
