@@ -1,4 +1,6 @@
-require("dotenv").config({ path: require("path").resolve(__dirname, "../.env") });
+// require("dotenv").config({ path: require("path").resolve(__dirname, "../.env") });
+
+require("dotenv").config(); // uses process.env (Railway vars)
 
 const { sequelize, Challenge } = require("../models");
 
