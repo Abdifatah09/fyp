@@ -22,7 +22,7 @@ const adminAnalyticsRoutes = require('./routes/adminAnalyticsRoutes');
 const  {sequelize}  = require('./models');
 
 const app = express();
-
+console.log("FRONTEND_URL =", process.env.FRONTEND_URL);
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   "http://localhost:5173",
