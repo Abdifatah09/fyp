@@ -17,6 +17,7 @@ const gamificationRoutes = require('./routes/gamificationRoutes');
 const leaderboardRoutes = require('./routes/leaderboardRoutes');
 const achievementRoutes = require('./routes/achievementRoutes');
 const badgeRoutes = require('./routes/badgeRoutes');
+const adminAnalyticsRoutes = require('./routes/adminAnalyticsRoutes');
 
 const  {sequelize}  = require('./models');
 
@@ -41,6 +42,7 @@ app.use("/gamification", gamificationRoutes);
 app.use("/leaderboard", leaderboardRoutes);
 app.use("/achievements", achievementRoutes);
 app.use("/badges", badgeRoutes);
+app.use("/admin/analytics", adminAnalyticsRoutes);
 
 (async () => {
   try {

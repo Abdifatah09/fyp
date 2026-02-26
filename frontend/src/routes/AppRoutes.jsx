@@ -23,6 +23,7 @@ import MyPathDifficulty from "../pages/MyPathDifficulty";
 import DifficultyChallenges from "../pages/DifficultyChallenges";
 import SolveChallenge from "../pages/SolveChallenge";
 import Achievements from "../pages/Achievements";
+import AdminAnalytics from "../pages/AdminAnalytics";
 
 
 export default function AppRoutes() {
@@ -143,6 +144,14 @@ export default function AppRoutes() {
         element={
          <AdminRoute>
             <AdminCurriculum />
+         </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/analytics"
+        element={
+         <AdminRoute>
+            <AdminAnalytics />
          </AdminRoute>
         }
       />
