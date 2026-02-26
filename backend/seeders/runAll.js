@@ -8,9 +8,9 @@ function run(file) {
 }
 
 try {
-  run("seedAchievements.js");
-  run("seedBadges.js");
-  // run("seedBeginnerJSChallenges.js");
+  // run("seedAchievements.js");
+  // run("seedBadges.js");
+  run("seedBeginnerJSChallenges.js");
   console.log("\n✅ All seeders ran successfully");
   process.exit(0);
 } catch (e) {

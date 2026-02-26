@@ -4,7 +4,7 @@ require("dotenv").config(); // uses process.env (Railway vars)
 
 const { sequelize, Challenge } = require("../models");
 
-const SECTION_ID = "75822d2b-2d50-42e7-9b76-0c3ec05b332a";
+const SECTION_ID = "945f684e-f2a9-4f55-88c6-b34e35e0a138";
 const LANGUAGE_ID = 102; // JS languageId
 
 const challenges = [
