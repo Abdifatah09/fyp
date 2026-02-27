@@ -22,21 +22,23 @@ const adminAnalyticsRoutes = require('./routes/adminAnalyticsRoutes');
 const  {sequelize}  = require('./models');
 
 const app = express();
-console.log("FRONTEND_URL =", process.env.FRONTEND_URL);
+
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  "https://hackpath.co.uk",
+  "https://www.hackpath.co.uk",
   "http://localhost:5173",
 ].filter(Boolean);
 
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(new Error(`CORS blocked: ${origin}`));
   },
   credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
+  allowedHeaders: ["Content-Type","Authorization"],
 }));
 
 
