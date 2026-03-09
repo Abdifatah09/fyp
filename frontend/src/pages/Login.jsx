@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { isValidEmail, validatePassword } from "../utils/validators";
+import { profileService } from "../services/profileService";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -37,10 +38,17 @@ export default function Login() {
 
     try {
       await login(email, password);
-      navigate("/profile");
+
+    try {
+      await profileService.me();
+      navigate("/dashboard");
+     } catch (err) {
+       navigate("/profile");
+     }
+
     } catch (error) {
       setErr(error?.response?.data?.message || "Login failed");
-    } finally {
+    }  finally {
       setLoading(false);
     }
   };

@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
-import { api } from "../services/api"; 
-import { profileService } from "../services/profileService"; 
+import { useNavigate } from "react-router-dom";
+import { api } from "../services/api";
+import { profileService } from "../services/profileService";
 
 export default function Profile() {
+  const navigate = useNavigate();
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -30,17 +33,18 @@ export default function Profile() {
       setError("");
 
       try {
-
         const meRes = await api.get("/auth/me");
         const meUserId = meRes?.data?.user?.id ?? meRes?.data?.id;
 
         if (!meUserId) {
           throw new Error("Could not find userId from /auth/me response.");
         }
+
         if (!mounted) return;
         setUserId(meUserId);
 
         let profData;
+
         try {
           profData = await profileService.me();
           if (!mounted) return;
@@ -79,7 +83,9 @@ export default function Profile() {
           firstName: resolvedProfile?.firstName ?? "",
           lastName: resolvedProfile?.lastName ?? "",
           username: resolvedProfile?.username ?? "",
-          dob: resolvedProfile?.dob ? String(resolvedProfile.dob).slice(0, 10) : "",
+          dob: resolvedProfile?.dob
+            ? String(resolvedProfile.dob).slice(0, 10)
+            : "",
           gender: resolvedProfile?.gender ?? "",
           bio: resolvedProfile?.bio ?? "",
           avatarUri: resolvedProfile?.avatarUri ?? "",
@@ -92,6 +98,7 @@ export default function Profile() {
           e?.response?.data?.message ||
           e?.message ||
           "Something went wrong loading your profile.";
+
         setError(msg);
       } finally {
         if (!mounted) return;
@@ -100,6 +107,7 @@ export default function Profile() {
     }
 
     load();
+
     return () => {
       mounted = false;
     };
@@ -125,6 +133,7 @@ export default function Profile() {
     }
 
     setSaving(true);
+
     try {
       const payload = {
         firstName: form.firstName.trim(),
@@ -140,6 +149,12 @@ export default function Profile() {
       const resolvedProfile = updated?.profile ?? updated;
 
       setProfile(resolvedProfile);
+
+      if (isNewProfile) {
+        setIsNewProfile(false);
+        navigate("/dashboard");
+        return;
+      }
 
       setIsNewProfile(false);
     } catch (e) {
@@ -182,7 +197,7 @@ export default function Profile() {
       )}
 
       <form onSubmit={onSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className="block text-sm font-medium mb-1">First Name</label>
             <input
@@ -217,9 +232,11 @@ export default function Profile() {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium mb-1">Date of Birth</label>
+            <label className="block text-sm font-medium mb-1">
+              Date of Birth
+            </label>
             <input
               type="date"
               name="dob"
@@ -278,11 +295,7 @@ export default function Profile() {
             disabled={saving}
             className="px-4 py-2 rounded-lg bg-black text-white disabled:opacity-60"
           >
-            {saving
-              ? "Saving..."
-              : isNewProfile
-              ? "Create"
-              : "Update"}
+            {saving ? "Saving..." : isNewProfile ? "Create" : "Update"}
           </button>
         </div>
       </form>

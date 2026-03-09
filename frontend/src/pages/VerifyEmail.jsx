@@ -64,6 +64,7 @@ export default function VerifyEmail() {
         <p className="text-sm text-gray-600 mb-4">
           Enter the 6-digit code we sent to your email address.
         </p>
+        <p className="text-sm text-gray-600 mb-4">Please make sure you check your spam/junk folder if you don't see the email.</p>
 
         {err && (
           <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
